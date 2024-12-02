@@ -1,8 +1,6 @@
-// internal/pdf/processor_test.go
 package pdf_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 
@@ -17,18 +15,16 @@ var _ = Describe("PDF Processor", func() {
 	var (
 		processor *pdf.Processor
 		tempDir   string
-		ctx       context.Context
 	)
 
 	BeforeEach(func() {
 		var err error
-		ctx = context.Background()
 		tempDir, err = os.MkdirTemp("", "notesankify-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  595.0,
-			Height: 842.0,
+			Width:  2480, // A4 size at 300 DPI: 8.27 × 11.69 inches
+			Height: 3508,
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -38,42 +34,47 @@ var _ = Describe("PDF Processor", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	Context("Page dimension matching", func() {
-		DescribeTable("matchesFlashcardSize",
+	Context("matchesFlashcardSize", func() {
+		DescribeTable("dimension matching",
 			func(width, height float64, expected models.PageDimensions, shouldMatch bool) {
 				result := pdf.MatchesFlashcardSize(width, height, expected)
 				Expect(result).To(Equal(shouldMatch))
 			},
-			Entry("exact match", 595.0, 842.0, models.PageDimensions{Width: 595.0, Height: 842.0}, true),
-			Entry("within tolerance", 595.1, 842.1, models.PageDimensions{Width: 595.0, Height: 842.0}, true),
-			Entry("completely different", 100.0, 100.0, models.PageDimensions{Width: 595.0, Height: 842.0}, false),
+			Entry("exact match",
+				2480.0, 3508.0,
+				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				true,
+			),
+			Entry("within tolerance",
+				2482.0, 3510.0,
+				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				true,
+			),
+			Entry("outside tolerance",
+				2500.0, 3520.0,
+				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				false,
+			),
+			Entry("completely different",
+				1000.0, 1000.0,
+				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				false,
+			),
 		)
 	})
 
-	Context("PDF Processing", func() {
-		It("should handle non-existent files", func() {
-			_, err := processor.ProcessPDF(ctx, "nonexistent.pdf")
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should process valid PDF files", func() {
-			pdfPath := filepath.Join("testdata", "test.pdf")
-			_, err := processor.ProcessPDF(ctx, pdfPath)
+	Context("when creating a new processor", func() {
+		It("should create the temporary directory", func() {
+			newTempDir := filepath.Join(tempDir, "newtemp")
+			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{Width: 100, Height: 100})
 			Expect(err).NotTo(HaveOccurred())
-		})
-
-		When("context is cancelled", func() {
-			It("should stop processing", func() {
-				ctxWithCancel, cancel := context.WithCancel(ctx)
-				cancel()
-				_, err := processor.ProcessPDF(ctxWithCancel, "any.pdf")
-				Expect(err).To(MatchError(context.Canceled))
-			})
+			Expect(newTempDir).To(BeADirectory())
 		})
 	})
 
-	Context("Temporary file management", func() {
-		It("should clean up temporary files", func() {
+	Context("when cleaning up", func() {
+		It("should remove the temporary directory", func() {
+			Expect(tempDir).To(BeADirectory())
 			err := processor.Cleanup()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tempDir).NotTo(BeADirectory())

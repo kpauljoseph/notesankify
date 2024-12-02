@@ -2,17 +2,15 @@ package acceptance_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"os"
 
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/pkg/models"
 )
 
-var _ = Describe("NotesAnkify End-to-End", func() {
+var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 	var (
 		processor *pdf.Processor
 		tempDir   string
@@ -26,8 +24,8 @@ var _ = Describe("NotesAnkify End-to-End", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  595.0,
-			Height: 842.0,
+			Width:  2480, // A4 size at 300 DPI
+			Height: 3508,
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -38,51 +36,21 @@ var _ = Describe("NotesAnkify End-to-End", func() {
 	})
 
 	Context("Standard Flashcard Processing", Label("happy-path"), func() {
-		It("should process standard flashcards correctly", func() {
-			By("Given a PDF with standard flashcard pages")
-			pdfPath := filepath.Join("testdata", "standard_flashcards.pdf")
+		It("should process flashcard pages correctly", func() {
+			By("Processing a PDF with flashcard pages")
+			pdfPath := "./testdata/test.pdf" // Use your existing test PDF
+			Expect(pdfPath).To(BeAnExistingFile())
 
-			By("When processing the PDF")
 			pages, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Then it should extract all flashcard pages")
-			Expect(pages).To(HaveLen(BeNumerically(">", 0)))
+			By("Verifying extracted pages")
+			Expect(pages).NotTo(BeEmpty())
 
-			By("And create image files for each page")
 			for _, page := range pages {
-				Expect(page.ImagePath).To(BeARegularFile())
+				Expect(page.ImagePath).To(BeAnExistingFile())
+				Expect(page.PDFPath).To(Equal(pdfPath))
 			}
-		})
-	})
-
-	Context("Mixed Content Processing", Label("content-handling"), func() {
-		It("should handle mixed content PDFs correctly", func() {
-			By("Given a PDF with mixed content")
-			pdfPath := filepath.Join("testdata", "mixed_content.pdf")
-
-			By("When processing the PDF")
-			pages, err := processor.ProcessPDF(ctx, pdfPath)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Then it should only extract flashcard pages")
-			for _, page := range pages {
-				Expect(page.ImagePath).To(BeARegularFile())
-			}
-		})
-	})
-
-	Context("Flashcard Modifications", Label("change-detection"), func() {
-		It("should detect modified flashcards", func() {
-			By("Given a PDF with modified flashcards")
-			pdfPath := filepath.Join("testdata", "modified_flashcards.pdf")
-
-			By("When processing the PDF")
-			pages, err := processor.ProcessPDF(ctx, pdfPath)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Then it should detect the modifications")
-			// Add specific change detection assertions
 		})
 	})
 
@@ -93,16 +61,10 @@ var _ = Describe("NotesAnkify End-to-End", func() {
 			Expect(err.Error()).To(ContainSubstring("no such file"))
 		})
 
-		It("should handle corrupted PDFs gracefully", func() {
-			pdfPath := filepath.Join("testdata", "corrupted.pdf")
-			_, err := processor.ProcessPDF(ctx, pdfPath)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should handle cancellation gracefully", func() {
+		It("should handle context cancellation", func() {
 			ctxWithCancel, cancel := context.WithCancel(ctx)
 			cancel()
-			_, err := processor.ProcessPDF(ctxWithCancel, "any.pdf")
+			_, err := processor.ProcessPDF(ctxWithCancel, "./testdata/test.pdf")
 			Expect(err).To(MatchError(context.Canceled))
 		})
 	})

@@ -3,12 +3,14 @@ package pdf
 import (
 	"context"
 	"fmt"
-	"github.com/gen2brain/go-fitz"
-	"github.com/kpauljoseph/notesankify/pkg/models"
 	"image"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/gen2brain/go-fitz"
+	"github.com/kpauljoseph/notesankify/pkg/models"
 )
 
 type Processor struct {
@@ -27,6 +29,9 @@ func NewProcessor(tempDir string, flashcardSize models.PageDimensions) (*Process
 }
 
 func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.FlashcardPage, error) {
+	log.Printf("Processing PDF: %s", pdfPath)
+	log.Printf("Using flashcard dimensions: %.2f x %.2f", p.flashcardSize.Width, p.flashcardSize.Height)
+
 	doc, err := fitz.New(pdfPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open PDF: %w", err)
@@ -40,12 +45,22 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
-			width, height := doc.PageSize(pageNum)
+			bounds, err := doc.Bound(pageNum)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get bounds for page %d: %w", pageNum, err)
+			}
+
+			width := float64(bounds.Dx())
+			height := float64(bounds.Dy())
+
+			log.Printf("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
 			if MatchesFlashcardSize(width, height, p.flashcardSize) {
-				img, err := doc.Image(pageNum)
+				log.Printf("Found matching flashcard page: %d", pageNum)
+
+				img, err := doc.ImageDPI(pageNum, 300.0)
 				if err != nil {
-					return nil, fmt.Errorf("failed to extract page %d: %w", pageNum, err)
+					return nil, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}
 
 				filename := fmt.Sprintf("flashcard_%d_%s.png", pageNum, filepath.Base(pdfPath))
@@ -68,8 +83,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 }
 
 func MatchesFlashcardSize(width, height float64, expected models.PageDimensions) bool {
-	// Allow for small variations in dimensions (e.g., due to rounding)
-	const tolerance = 0.1
+	const tolerance = 5.0 // Increased tolerance for pixel measurements
 
 	widthMatch := abs(width-expected.Width) <= tolerance
 	heightMatch := abs(height-expected.Height) <= tolerance
@@ -84,7 +98,7 @@ func abs(x float64) float64 {
 	return x
 }
 
-func saveImage(img image.Image, path string) error {
+func saveImage(img *image.RGBA, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
