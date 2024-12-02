@@ -3,6 +3,7 @@ package acceptance_test
 import (
 	"context"
 	"fmt"
+	"github.com/gen2brain/go-fitz"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -77,6 +78,29 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			pages, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
+			// Debug page content
+			doc, err := fitz.New(pdfPath)
+			Expect(err).NotTo(HaveOccurred())
+			defer doc.Close()
+
+			for i, page := range pages {
+				fmt.Printf("\n=== Page %d ===\n", i)
+				fmt.Printf("PDFPath: %s\n", page.PDFPath)
+				fmt.Printf("PageNum: %d\n", page.PageNum)
+				fmt.Printf("ImagePath: %s\n", page.ImagePath)
+
+				bounds, err := doc.Bound(page.PageNum)
+				if err == nil {
+					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				}
+
+				text, err := doc.Text(page.PageNum)
+				if err == nil {
+					fmt.Printf("Content:\n%s\n", text)
+				}
+			}
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Verifying all pages were processed")
 			Expect(pages).To(HaveLen(5))
 
@@ -93,6 +117,29 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			pages, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
+			//Debug Page content
+			doc, err := fitz.New(pdfPath)
+			Expect(err).NotTo(HaveOccurred())
+			defer doc.Close()
+
+			for i, page := range pages {
+				fmt.Printf("\n=== Page %d ===\n", i)
+				fmt.Printf("PDFPath: %s\n", page.PDFPath)
+				fmt.Printf("PageNum: %d\n", page.PageNum)
+				fmt.Printf("ImagePath: %s\n", page.ImagePath)
+
+				bounds, err := doc.Bound(page.PageNum)
+				if err == nil {
+					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				}
+
+				text, err := doc.Text(page.PageNum)
+				if err == nil {
+					fmt.Printf("Content:\n%s\n", text)
+				}
+			}
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Only extracting pages with QUESTION/ANSWER markers")
 			for _, page := range pages {
 				Expect(page.ImagePath).To(BeAnExistingFile())
@@ -105,6 +152,29 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			pdfPath := filepath.Join(testDataDir, "mixed_content_largeNormalPage_smallFlashcardPage.pdf")
 
 			pages, err := processor.ProcessPDF(ctx, pdfPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Debug page content
+			doc, err := fitz.New(pdfPath)
+			Expect(err).NotTo(HaveOccurred())
+			defer doc.Close()
+
+			for i, page := range pages {
+				fmt.Printf("\n=== Page %d ===\n", i)
+				fmt.Printf("PDFPath: %s\n", page.PDFPath)
+				fmt.Printf("PageNum: %d\n", page.PageNum)
+				fmt.Printf("ImagePath: %s\n", page.ImagePath)
+
+				bounds, err := doc.Bound(page.PageNum)
+				if err == nil {
+					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				}
+
+				text, err := doc.Text(page.PageNum)
+				if err == nil {
+					fmt.Printf("Content:\n%s\n", text)
+				}
+			}
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Extracting only Goodnotes standard sized pages with markers")

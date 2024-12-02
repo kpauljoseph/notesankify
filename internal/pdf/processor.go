@@ -50,6 +50,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 
 	var flashcards []models.FlashcardPage
 
+	//Page numbers are zero indexed in the fitz package.
 	for pageNum := 0; pageNum < doc.NumPage(); pageNum++ {
 		select {
 		case <-ctx.Done():
