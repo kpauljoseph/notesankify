@@ -23,8 +23,8 @@ var _ = Describe("PDF Processor", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  2480, // A4 size at 300 DPI: 8.27 × 11.69 inches
-			Height: 3508,
+			Width:  455.04, // Goodnotes standard width
+			Height: 587.52, // Goodnotes standard height
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -34,30 +34,59 @@ var _ = Describe("PDF Processor", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	Context("matchesFlashcardSize", func() {
-		DescribeTable("dimension matching",
-			func(width, height float64, expected models.PageDimensions, shouldMatch bool) {
-				result := pdf.MatchesFlashcardSize(width, height, expected)
+	Context("Goodnotes dimensions", func() {
+		DescribeTable("matchesGoodnotesDimensions",
+			func(width, height float64, shouldMatch bool) {
+				result := pdf.MatchesGoodnotesDimensions(width, height)
 				Expect(result).To(Equal(shouldMatch))
 			},
 			Entry("exact match",
-				2480.0, 3508.0,
-				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				455.04, 587.52,
 				true,
 			),
 			Entry("within tolerance",
-				2482.0, 3510.0,
-				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				455.5, 587.9,
 				true,
 			),
-			Entry("outside tolerance",
-				2500.0, 3520.0,
-				models.PageDimensions{Width: 2480.0, Height: 3508.0},
-				false,
+			Entry("rotated exact match",
+				587.52, 455.04,
+				true,
+			),
+			Entry("rotated within tolerance",
+				587.9, 455.5,
+				true,
 			),
 			Entry("completely different",
-				1000.0, 1000.0,
-				models.PageDimensions{Width: 2480.0, Height: 3508.0},
+				595.28, 841.89, // A4 size
+				false,
+			),
+		)
+	})
+
+	Context("Flashcard marker detection", func() {
+		DescribeTable("containsFlashcardMarkers",
+			func(text string, shouldMatch bool) {
+				result := pdf.ContainsFlashcardMarkers(text)
+				Expect(result).To(Equal(shouldMatch))
+			},
+			Entry("standard markers",
+				"QUESTION\nsome text\nANSWER\nmore text",
+				true,
+			),
+			Entry("markers with different case",
+				"Question\nsome text\nanswer\nmore text",
+				true,
+			),
+			Entry("only question marker",
+				"QUESTION\nsome text",
+				false,
+			),
+			Entry("only answer marker",
+				"ANSWER\nsome text",
+				false,
+			),
+			Entry("no markers",
+				"some random text",
 				false,
 			),
 		)
@@ -66,7 +95,10 @@ var _ = Describe("PDF Processor", func() {
 	Context("when creating a new processor", func() {
 		It("should create the temporary directory", func() {
 			newTempDir := filepath.Join(tempDir, "newtemp")
-			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{Width: 100, Height: 100})
+			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{
+				Width:  455.04,
+				Height: 587.52,
+			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newTempDir).To(BeADirectory())
 		})

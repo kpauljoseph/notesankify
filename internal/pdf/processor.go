@@ -8,9 +8,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gen2brain/go-fitz"
 	"github.com/kpauljoseph/notesankify/pkg/models"
+)
+
+const (
+	GoodnotesPtWidth  = 455.04
+	GoodnotesPtHeight = 587.52
+
+	DimensionTolerance = 1.0
+
+	QuestionKeyword = "QUESTION"
+	AnswerKeyword   = "ANSWER"
 )
 
 type Processor struct {
@@ -30,7 +41,6 @@ func NewProcessor(tempDir string, flashcardSize models.PageDimensions) (*Process
 
 func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.FlashcardPage, error) {
 	log.Printf("Processing PDF: %s", pdfPath)
-	log.Printf("Using flashcard dimensions: %.2f x %.2f", p.flashcardSize.Width, p.flashcardSize.Height)
 
 	doc, err := fitz.New(pdfPath)
 	if err != nil {
@@ -55,10 +65,23 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 
 			log.Printf("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
-			if MatchesFlashcardSize(width, height, p.flashcardSize) {
-				log.Printf("Found matching flashcard page: %d", pageNum)
+			isStandardSize := MatchesGoodnotesDimensions(width, height)
 
-				img, err := doc.ImageDPI(pageNum, 300.0)
+			isFlashcard := false
+			if isStandardSize {
+				text, err := doc.Text(pageNum)
+				if err != nil {
+					log.Printf("Warning: couldn't extract text from page %d: %v", pageNum, err)
+					continue
+				}
+
+				isFlashcard = ContainsFlashcardMarkers(text)
+			}
+
+			if isFlashcard {
+				log.Printf("Found flashcard page: %d", pageNum)
+
+				img, err := doc.Image(pageNum)
 				if err != nil {
 					return nil, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}
@@ -82,13 +105,19 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 	return flashcards, nil
 }
 
-func MatchesFlashcardSize(width, height float64, expected models.PageDimensions) bool {
-	const tolerance = 5.0 // Increased tolerance for pixel measurements
+func MatchesGoodnotesDimensions(width, height float64) bool {
+	widthMatch := abs(width-GoodnotesPtWidth) <= DimensionTolerance
+	heightMatch := abs(height-GoodnotesPtHeight) <= DimensionTolerance
 
-	widthMatch := abs(width-expected.Width) <= tolerance
-	heightMatch := abs(height-expected.Height) <= tolerance
+	rotatedWidthMatch := abs(width-GoodnotesPtHeight) <= DimensionTolerance
+	rotatedHeightMatch := abs(height-GoodnotesPtWidth) <= DimensionTolerance
 
-	return widthMatch && heightMatch
+	return (widthMatch && heightMatch) || (rotatedWidthMatch && rotatedHeightMatch)
+}
+
+func ContainsFlashcardMarkers(text string) bool {
+	text = strings.ToUpper(text)
+	return strings.Contains(text, QuestionKeyword) && strings.Contains(text, AnswerKeyword)
 }
 
 func abs(x float64) float64 {
