@@ -3,12 +3,12 @@ package pdf
 import (
 	"context"
 	"fmt"
+	"github.com/gen2brain/go-fitz"
+	"github.com/kpauljoseph/notesankify/pkg/models"
 	"image"
 	"image/png"
 	"os"
 	"path/filepath"
-
-	"github.com/kpauljoseph/notesankify/pkg/models"
 )
 
 type Processor struct {
@@ -42,7 +42,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 		default:
 			width, height := doc.PageSize(pageNum)
 
-			if matchesFlashcardSize(width, height, p.flashcardSize) {
+			if MatchesFlashcardSize(width, height, p.flashcardSize) {
 				img, err := doc.Image(pageNum)
 				if err != nil {
 					return nil, fmt.Errorf("failed to extract page %d: %w", pageNum, err)
@@ -67,7 +67,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 	return flashcards, nil
 }
 
-func matchesFlashcardSize(width, height float64, expected models.PageDimensions) bool {
+func MatchesFlashcardSize(width, height float64, expected models.PageDimensions) bool {
 	// Allow for small variations in dimensions (e.g., due to rounding)
 	const tolerance = 0.1
 
