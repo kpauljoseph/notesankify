@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gen2brain/go-fitz"
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,12 +56,12 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 	BeforeEach(func() {
 		var err error
 		ctx = context.Background()
-		tempDir, err = os.MkdirTemp("", "notesankify-acceptance-*")
+		tempDir, err = os.MkdirTemp("/tmp", "notesankify-acceptance-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  455.04,
-			Height: 587.52,
+			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
