@@ -102,12 +102,18 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			}
 			Expect(err).NotTo(HaveOccurred())
 
+			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
+			expectedPages := []int{0, 1, 2, 3, 4}
+
 			By("Verifying all pages were processed")
 			Expect(pages).To(HaveLen(5))
 
-			for _, page := range pages {
+			for pageIndex, page := range pages {
 				Expect(page.ImagePath).To(BeAnExistingFile())
 				Expect(page.PDFPath).To(Equal(pdfPath))
+				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
+					"Page %d should be from page %d of the original PDF, but got page %d",
+					pageIndex, expectedPages[pageIndex], page.PageNum)
 			}
 		})
 
@@ -141,10 +147,16 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			}
 			Expect(err).NotTo(HaveOccurred())
 
+			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
+			expectedPages := []int{1, 2, 4, 5, 7}
+
 			By("Only extracting pages with QUESTION/ANSWER markers")
-			for _, page := range pages {
+			for pageIndex, page := range pages {
 				Expect(page.ImagePath).To(BeAnExistingFile())
 				Expect(page.PDFPath).To(Equal(pdfPath))
+				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
+					"Page %d should be from page %d of the original PDF, but got page %d",
+					pageIndex, expectedPages[pageIndex], page.PageNum)
 			}
 		})
 
@@ -178,10 +190,15 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			}
 			Expect(err).NotTo(HaveOccurred())
 
+			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7.
+			expectedPages := []int{1, 2, 4, 5, 7}
 			By("Extracting only Goodnotes standard sized pages with markers")
-			for _, page := range pages {
+			for pageIndex, page := range pages {
 				Expect(page.ImagePath).To(BeAnExistingFile())
 				Expect(page.PDFPath).To(Equal(pdfPath))
+				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
+					"Page %d should be from page %d of the original PDF, but got page %d",
+					pageIndex, expectedPages[pageIndex], page.PageNum)
 			}
 		})
 	})

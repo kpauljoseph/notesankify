@@ -1,6 +1,7 @@
 package pdf_test
 
 import (
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"os"
 	"path/filepath"
 
@@ -23,8 +24,8 @@ var _ = Describe("PDF Processor", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  455.04, // Goodnotes standard width
-			Height: 587.52, // Goodnotes standard height
+			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,  // Goodnotes standard width
+			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT, // Goodnotes standard height
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -41,7 +42,7 @@ var _ = Describe("PDF Processor", func() {
 				Expect(result).To(Equal(shouldMatch))
 			},
 			Entry("exact match",
-				455.04, 587.52,
+				utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH, utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 				true,
 			),
 			Entry("within tolerance",
