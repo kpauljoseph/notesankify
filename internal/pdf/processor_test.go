@@ -24,8 +24,8 @@ var _ = Describe("PDF Processor", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,  // Goodnotes standard width
-			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT, // Goodnotes standard height
+			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 		})
 		Expect(err).NotTo(HaveOccurred())
 	})

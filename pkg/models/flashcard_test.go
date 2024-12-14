@@ -1,4 +1,3 @@
-// pkg/models/flashcard_test.go
 package models_test
 
 import (
