@@ -31,8 +31,34 @@ var _ = Describe("PDF Processor", func() {
 	})
 
 	AfterEach(func() {
-		err := os.RemoveAll(tempDir)
-		Expect(err).NotTo(HaveOccurred())
+		// Only cleanup if the test didn't already call Cleanup()
+		if _, err := os.Stat(tempDir); err == nil {
+			err := os.RemoveAll(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+		}
+	})
+
+	Context("Initialization", func() {
+		It("should create the temporary directory", func() {
+			newTempDir := filepath.Join(tempDir, "newtemp")
+			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{
+				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(newTempDir).To(BeADirectory())
+		})
+	})
+
+	Context("Cleanup", func() {
+		It("should remove the temporary directory", func() {
+			Expect(tempDir).To(BeADirectory())
+
+			err := processor.Cleanup()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(tempDir).NotTo(BeADirectory())
+		})
 	})
 
 	Context("Goodnotes dimensions", func() {
@@ -50,7 +76,7 @@ var _ = Describe("PDF Processor", func() {
 				true,
 			),
 			Entry("rotated exact match",
-				587.52, 455.04,
+				utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT, utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 				true,
 			),
 			Entry("rotated within tolerance",
@@ -91,26 +117,5 @@ var _ = Describe("PDF Processor", func() {
 				false,
 			),
 		)
-	})
-
-	Context("when creating a new processor", func() {
-		It("should create the temporary directory", func() {
-			newTempDir := filepath.Join(tempDir, "newtemp")
-			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{
-				Width:  455.04,
-				Height: 587.52,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newTempDir).To(BeADirectory())
-		})
-	})
-
-	Context("when cleaning up", func() {
-		It("should remove the temporary directory", func() {
-			Expect(tempDir).To(BeADirectory())
-			err := processor.Cleanup()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(tempDir).NotTo(BeADirectory())
-		})
 	})
 })

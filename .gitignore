@@ -11,6 +11,8 @@ build/
 
 # Output of the go coverage tool
 *.out
+*.coverprofile
+coverage.*
 
 # Dependency directories
 vendor/
