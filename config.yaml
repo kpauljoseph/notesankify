@@ -1,0 +1,12 @@
+pdf_source_dir: "./pdfs"
+anki_deck_name: "NotesAnkify"
+flashcard_size:
+  width: 455.04
+  height: 587.52
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "notesankify"
+  sslmode: "disable"
