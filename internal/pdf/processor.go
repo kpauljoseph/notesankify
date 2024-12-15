@@ -63,13 +63,15 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 	}
 	defer doc.Close()
 
-	//Page numbers are zero indexed in the fitz package.
-	for pageNum := 0; pageNum < doc.NumPage(); pageNum++ {
+	// Page numbers are zero indexed in the fitz package.
+	// pageIndex -> index, and pageNum -> actual page number in pdf file
+	for pageIndex := 0; pageIndex < doc.NumPage(); pageIndex++ {
 		select {
 		case <-ctx.Done():
 			return stats, ctx.Err()
 		default:
-			bounds, err := doc.Bound(pageNum)
+			pageNum := pageIndex + 1 // Convert to one-based page number for user-facing content
+			bounds, err := doc.Bound(pageIndex)
 			if err != nil {
 				return stats, fmt.Errorf("failed to get bounds for page %d: %w", pageNum, err)
 			}
@@ -83,7 +85,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 
 			isFlashcard := false
 			if isStandardSize {
-				text, err := doc.Text(pageNum)
+				text, err := doc.Text(pageIndex)
 				if err != nil {
 					p.logger.Printf("Warning: couldn't extract text from page %d: %v", pageNum, err)
 					continue
@@ -95,7 +97,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			if isFlashcard {
 				p.logger.Printf("Found flashcard page: %d", pageNum)
 
-				img, err := doc.Image(pageNum)
+				img, err := doc.Image(pageIndex)
 				if err != nil {
 					return stats, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}

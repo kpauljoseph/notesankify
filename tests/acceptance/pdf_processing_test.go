@@ -99,14 +99,14 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			defer doc.Close()
 
 			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
-			expectedPages := []int{0, 1, 2, 3, 4}
+			expectedPageNums := []int{1, 2, 3, 4, 5}
 
 			By("Verifying all pages were processed")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
 
 			files, err := os.ReadDir(outputDir)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPages)))
+			Expect(files).To(HaveLen(len(expectedPageNums)))
 
 			for i, file := range files {
 				filePath := filepath.Join(outputDir, file.Name())
@@ -117,7 +117,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				Expect(filePath).To(BeAnExistingFile())
 
 				// Get original page content for debugging
-				pageNum := expectedPages[i]
+				pageNum := expectedPageNums[i]
 				bounds, err := doc.Bound(pageNum)
 				if err == nil {
 					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
@@ -130,7 +130,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			}
 
 			// Verify page order
-			for _, pageNum := range expectedPages {
+			for _, pageNum := range expectedPageNums {
 				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
 				filePath := filepath.Join(outputDir, filename)
 				Expect(filePath).To(BeAnExistingFile(),
@@ -151,14 +151,14 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			defer doc.Close()
 
 			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
-			expectedPages := []int{1, 2, 4, 5, 7}
+			expectedPageNums := []int{2, 3, 5, 6, 8}
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
 
 			files, err := os.ReadDir(outputDir)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPages)))
+			Expect(files).To(HaveLen(len(expectedPageNums)))
 
 			// Debug output files
 			for i, file := range files {
@@ -169,7 +169,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 				Expect(filePath).To(BeAnExistingFile())
 
-				pageNum := expectedPages[i]
+				pageNum := expectedPageNums[i]
 				bounds, err := doc.Bound(pageNum)
 				if err == nil {
 					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
@@ -181,7 +181,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				}
 			}
 
-			for _, pageNum := range expectedPages {
+			for _, pageNum := range expectedPageNums {
 				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
 				filePath := filepath.Join(outputDir, filename)
 				Expect(filePath).To(BeAnExistingFile(),
@@ -202,14 +202,14 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			defer doc.Close()
 
 			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
-			expectedPages := []int{1, 2, 4, 5, 7}
+			expectedPageNums := []int{2, 3, 5, 6, 8}
 
 			By("Extracting only Goodnotes standard sized pages with markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
 
 			files, err := os.ReadDir(outputDir)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPages)))
+			Expect(files).To(HaveLen(len(expectedPageNums)))
 
 			for i, file := range files {
 				filePath := filepath.Join(outputDir, file.Name())
@@ -219,7 +219,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 				Expect(filePath).To(BeAnExistingFile())
 
-				pageNum := expectedPages[i]
+				pageNum := expectedPageNums[i]
 				bounds, err := doc.Bound(pageNum)
 				if err == nil {
 					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
@@ -231,7 +231,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				}
 			}
 
-			for _, pageNum := range expectedPages {
+			for _, pageNum := range expectedPageNums {
 				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
 				filePath := filepath.Join(outputDir, filename)
 				Expect(filePath).To(BeAnExistingFile(),
