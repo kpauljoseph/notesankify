@@ -24,47 +24,60 @@ const (
 	AnswerKeyword   = "ANSWER"
 )
 
-type Processor struct {
-	tempDir       string
-	flashcardSize models.PageDimensions
+type ProcessingStats struct {
+	PDFPath        string
+	FlashcardCount int
 }
 
-func NewProcessor(tempDir string, flashcardSize models.PageDimensions) (*Processor, error) {
+type Processor struct {
+	tempDir       string
+	outputDir     string
+	flashcardSize models.PageDimensions
+	logger        *log.Logger
+}
+
+func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *log.Logger) (*Processor, error) {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
+
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
 	return &Processor{
 		tempDir:       tempDir,
+		outputDir:     outputDir,
 		flashcardSize: flashcardSize,
+		logger:        logger,
 	}, nil
 }
 
-func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.FlashcardPage, error) {
-	log.Printf("Processing PDF: %s", pdfPath)
+func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingStats, error) {
+	p.logger.Printf("Processing PDF: %s", pdfPath)
+	stats := ProcessingStats{PDFPath: pdfPath}
 
 	doc, err := fitz.New(pdfPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open PDF: %w", err)
+		return stats, fmt.Errorf("failed to open PDF: %w", err)
 	}
 	defer doc.Close()
-
-	var flashcards []models.FlashcardPage
 
 	//Page numbers are zero indexed in the fitz package.
 	for pageNum := 0; pageNum < doc.NumPage(); pageNum++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return stats, ctx.Err()
 		default:
 			bounds, err := doc.Bound(pageNum)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get bounds for page %d: %w", pageNum, err)
+				return stats, fmt.Errorf("failed to get bounds for page %d: %w", pageNum, err)
 			}
 
 			width := float64(bounds.Dx())
 			height := float64(bounds.Dy())
 
-			log.Printf("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
+			p.logger.Printf("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
 			isStandardSize := MatchesGoodnotesDimensions(width, height)
 
@@ -72,7 +85,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 			if isStandardSize {
 				text, err := doc.Text(pageNum)
 				if err != nil {
-					log.Printf("Warning: couldn't extract text from page %d: %v", pageNum, err)
+					p.logger.Printf("Warning: couldn't extract text from page %d: %v", pageNum, err)
 					continue
 				}
 
@@ -80,30 +93,29 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) ([]models.Fl
 			}
 
 			if isFlashcard {
-				log.Printf("Found flashcard page: %d", pageNum)
+				p.logger.Printf("Found flashcard page: %d", pageNum)
 
 				img, err := doc.Image(pageNum)
 				if err != nil {
-					return nil, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
+					return stats, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}
 
-				filename := fmt.Sprintf("flashcard_%d_%s.png", pageNum, filepath.Base(pdfPath))
-				imagePath := filepath.Join(p.tempDir, filename)
+				pdfBase := filepath.Base(pdfPath)
+				pdfName := strings.TrimSuffix(pdfBase, filepath.Ext(pdfBase))
+				outName := fmt.Sprintf("%s_page%d.png", pdfName, pageNum)
+				outPath := filepath.Join(p.outputDir, outName)
 
-				if err := saveImage(img, imagePath); err != nil {
-					return nil, fmt.Errorf("failed to save image for page %d: %w", pageNum, err)
+				if err := saveImage(img, outPath); err != nil {
+					return stats, fmt.Errorf("failed to save image for page %d: %w", pageNum, err)
 				}
 
-				flashcards = append(flashcards, models.FlashcardPage{
-					PDFPath:   pdfPath,
-					PageNum:   pageNum,
-					ImagePath: imagePath,
-				})
+				stats.FlashcardCount++
+				p.logger.Printf("Saved flashcard: %s", outName)
 			}
 		}
 	}
 
-	return flashcards, nil
+	return stats, nil
 }
 
 func MatchesGoodnotesDimensions(width, height float64) bool {

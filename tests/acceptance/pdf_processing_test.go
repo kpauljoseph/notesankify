@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gen2brain/go-fitz"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,8 +31,10 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 	var (
 		processor   *pdf.Processor
 		tempDir     string
+		outputDir   string
 		ctx         context.Context
 		testDataDir string
+		testLogger  *log.Logger
 	)
 
 	BeforeAll(func() {
@@ -59,15 +62,27 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		tempDir, err = os.MkdirTemp("/tmp", "notesankify-acceptance-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
-			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
-		})
+		outputDir, err = os.MkdirTemp("/tmp", "notesankify-output-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		testLogger = log.New(GinkgoWriter, "[test] ", log.LstdFlags)
+
+		processor, err = pdf.NewProcessor(
+			tempDir,
+			outputDir,
+			models.PageDimensions{
+				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+			},
+			testLogger,
+		)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		err := os.RemoveAll(tempDir)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.RemoveAll(outputDir)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -76,44 +91,50 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			pdfPath := filepath.Join(testDataDir, "standard_flashcards.pdf")
 
 			By("Processing a PDF with only standard flashcard pages")
-			pages, err := processor.ProcessPDF(ctx, pdfPath)
+			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
-
-			for i, page := range pages {
-				fmt.Printf("\n=== Page %d ===\n", i)
-				fmt.Printf("PDFPath: %s\n", page.PDFPath)
-				fmt.Printf("PageNum: %d\n", page.PageNum)
-				fmt.Printf("ImagePath: %s\n", page.ImagePath)
-
-				bounds, err := doc.Bound(page.PageNum)
-				if err == nil {
-					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
-				}
-
-				text, err := doc.Text(page.PageNum)
-				if err == nil {
-					fmt.Printf("Content:\n%s\n", text)
-				}
-			}
-			Expect(err).NotTo(HaveOccurred())
 
 			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
 			expectedPages := []int{0, 1, 2, 3, 4}
 
 			By("Verifying all pages were processed")
-			Expect(pages).To(HaveLen(5))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
 
-			for pageIndex, page := range pages {
-				Expect(page.ImagePath).To(BeAnExistingFile())
-				Expect(page.PDFPath).To(Equal(pdfPath))
-				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
-					"Page %d should be from page %d of the original PDF, but got page %d",
-					pageIndex, expectedPages[pageIndex], page.PageNum)
+			files, err := os.ReadDir(outputDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(files).To(HaveLen(len(expectedPages)))
+
+			for i, file := range files {
+				filePath := filepath.Join(outputDir, file.Name())
+				fmt.Printf("\n=== Output File %d ===\n", i)
+				fmt.Printf("Filename: %s\n", file.Name())
+				fmt.Printf("Path: %s\n", filePath)
+
+				Expect(filePath).To(BeAnExistingFile())
+
+				// Get original page content for debugging
+				pageNum := expectedPages[i]
+				bounds, err := doc.Bound(pageNum)
+				if err == nil {
+					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				}
+
+				text, err := doc.Text(pageNum)
+				if err == nil {
+					fmt.Printf("Original Content:\n%s\n", text)
+				}
+			}
+
+			// Verify page order
+			for _, pageNum := range expectedPages {
+				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
+				filePath := filepath.Join(outputDir, filename)
+				Expect(filePath).To(BeAnExistingFile(),
+					"Expected file for page %d not found: %s", pageNum, filename)
 			}
 		})
 
@@ -121,7 +142,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			By("Processing a PDF with mixed content but same page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf")
 
-			pages, err := processor.ProcessPDF(ctx, pdfPath)
+			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			//Debug Page content
@@ -129,34 +150,42 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
-			for i, page := range pages {
-				fmt.Printf("\n=== Page %d ===\n", i)
-				fmt.Printf("PDFPath: %s\n", page.PDFPath)
-				fmt.Printf("PageNum: %d\n", page.PageNum)
-				fmt.Printf("ImagePath: %s\n", page.ImagePath)
-
-				bounds, err := doc.Bound(page.PageNum)
-				if err == nil {
-					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
-				}
-
-				text, err := doc.Text(page.PageNum)
-				if err == nil {
-					fmt.Printf("Content:\n%s\n", text)
-				}
-			}
-			Expect(err).NotTo(HaveOccurred())
-
 			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
 			expectedPages := []int{1, 2, 4, 5, 7}
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
-			for pageIndex, page := range pages {
-				Expect(page.ImagePath).To(BeAnExistingFile())
-				Expect(page.PDFPath).To(Equal(pdfPath))
-				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
-					"Page %d should be from page %d of the original PDF, but got page %d",
-					pageIndex, expectedPages[pageIndex], page.PageNum)
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+
+			files, err := os.ReadDir(outputDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(files).To(HaveLen(len(expectedPages)))
+
+			// Debug output files
+			for i, file := range files {
+				filePath := filepath.Join(outputDir, file.Name())
+				fmt.Printf("\n=== Output File %d ===\n", i)
+				fmt.Printf("Filename: %s\n", file.Name())
+				fmt.Printf("Path: %s\n", filePath)
+
+				Expect(filePath).To(BeAnExistingFile())
+
+				pageNum := expectedPages[i]
+				bounds, err := doc.Bound(pageNum)
+				if err == nil {
+					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				}
+
+				text, err := doc.Text(pageNum)
+				if err == nil {
+					fmt.Printf("Original Content:\n%s\n", text)
+				}
+			}
+
+			for _, pageNum := range expectedPages {
+				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
+				filePath := filepath.Join(outputDir, filename)
+				Expect(filePath).To(BeAnExistingFile(),
+					"Expected file for page %d not found: %s", pageNum, filename)
 			}
 		})
 
@@ -164,7 +193,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			By("Processing a PDF with mixed content and different page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_largeNormalPage_smallFlashcardPage.pdf")
 
-			pages, err := processor.ProcessPDF(ctx, pdfPath)
+			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Debug page content
@@ -172,33 +201,41 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
-			for i, page := range pages {
-				fmt.Printf("\n=== Page %d ===\n", i)
-				fmt.Printf("PDFPath: %s\n", page.PDFPath)
-				fmt.Printf("PageNum: %d\n", page.PageNum)
-				fmt.Printf("ImagePath: %s\n", page.ImagePath)
+			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
+			expectedPages := []int{1, 2, 4, 5, 7}
 
-				bounds, err := doc.Bound(page.PageNum)
+			By("Extracting only Goodnotes standard sized pages with markers")
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+
+			files, err := os.ReadDir(outputDir)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(files).To(HaveLen(len(expectedPages)))
+
+			for i, file := range files {
+				filePath := filepath.Join(outputDir, file.Name())
+				fmt.Printf("\n=== Output File %d ===\n", i)
+				fmt.Printf("Filename: %s\n", file.Name())
+				fmt.Printf("Path: %s\n", filePath)
+
+				Expect(filePath).To(BeAnExistingFile())
+
+				pageNum := expectedPages[i]
+				bounds, err := doc.Bound(pageNum)
 				if err == nil {
-					fmt.Printf("Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
 				}
 
-				text, err := doc.Text(page.PageNum)
+				text, err := doc.Text(pageNum)
 				if err == nil {
-					fmt.Printf("Content:\n%s\n", text)
+					fmt.Printf("Original Content:\n%s\n", text)
 				}
 			}
-			Expect(err).NotTo(HaveOccurred())
 
-			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7.
-			expectedPages := []int{1, 2, 4, 5, 7}
-			By("Extracting only Goodnotes standard sized pages with markers")
-			for pageIndex, page := range pages {
-				Expect(page.ImagePath).To(BeAnExistingFile())
-				Expect(page.PDFPath).To(Equal(pdfPath))
-				Expect(page.PageNum).To(Equal(expectedPages[pageIndex]),
-					"Page %d should be from page %d of the original PDF, but got page %d",
-					pageIndex, expectedPages[pageIndex], page.PageNum)
+			for _, pageNum := range expectedPages {
+				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
+				filePath := filepath.Join(outputDir, filename)
+				Expect(filePath).To(BeAnExistingFile(),
+					"Expected file for page %d not found: %s", pageNum, filename)
 			}
 		})
 	})

@@ -6,29 +6,24 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-
-	"github.com/kpauljoseph/notesankify/internal/pdf"
 )
 
 type Stats struct {
-	PDFCount       int
-	FlashcardCount int
+	PDFCount int
 }
 
 type DirectoryScanner struct {
-	processor pdf.PDFProcessor
-	logger    *log.Logger
+	logger *log.Logger
 }
 
-func New(processor pdf.PDFProcessor, logger *log.Logger) *DirectoryScanner {
+func New(logger *log.Logger) *DirectoryScanner {
 	return &DirectoryScanner{
-		processor: processor,
-		logger:    logger,
+		logger: logger,
 	}
 }
 
-func (s *DirectoryScanner) ScanDirectory(ctx context.Context, dir string) (Stats, error) {
-	var stats Stats
+func (s *DirectoryScanner) FindPDFs(ctx context.Context, dir string) ([]string, error) {
+	var pdfs []string
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		select {
@@ -50,40 +45,17 @@ func (s *DirectoryScanner) ScanDirectory(ctx context.Context, dir string) (Stats
 			return nil
 		}
 
-		stats.PDFCount++
-		relPath, err := filepath.Rel(dir, path)
-		if err != nil {
-			relPath = path
-		}
-		s.logger.Printf("Processing PDF (%d): %s", stats.PDFCount, relPath)
-
-		pages, err := s.processor.ProcessPDF(ctx, path)
-		if err != nil {
-			if err == context.Canceled {
-				return err
-			}
-			s.logger.Printf("Error processing %s: %v", relPath, err)
-			return nil
-		}
-
-		if len(pages) > 0 {
-			s.logger.Printf("Found %d flashcard pages in %s:", len(pages), relPath)
-			for i, page := range pages {
-				s.logger.Printf("  Page %d: original page %d", i+1, page.PageNum)
-			}
-			stats.FlashcardCount += len(pages)
-		}
-
+		pdfs = append(pdfs, path)
 		return nil
 	})
 
 	if err != nil {
-		return stats, err
+		return nil, err
 	}
 
-	if stats.PDFCount == 0 {
-		return stats, fmt.Errorf("no PDF files found in %s or its subdirectories", dir)
+	if len(pdfs) == 0 {
+		return nil, fmt.Errorf("no PDF files found in %s or its subdirectories", dir)
 	}
 
-	return stats, nil
+	return pdfs, nil
 }

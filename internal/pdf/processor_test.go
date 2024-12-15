@@ -2,11 +2,11 @@ package pdf_test
 
 import (
 	"github.com/kpauljoseph/notesankify/pkg/utils"
-	"os"
-	"path/filepath"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/pkg/models"
@@ -14,8 +14,10 @@ import (
 
 var _ = Describe("PDF Processor", func() {
 	var (
-		processor *pdf.Processor
-		tempDir   string
+		processor  *pdf.Processor
+		tempDir    string
+		outputDir  string
+		testLogger *log.Logger
 	)
 
 	BeforeEach(func() {
@@ -23,42 +25,28 @@ var _ = Describe("PDF Processor", func() {
 		tempDir, err = os.MkdirTemp("", "notesankify-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		processor, err = pdf.NewProcessor(tempDir, models.PageDimensions{
-			Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
-			Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
-		})
+		outputDir, err = os.MkdirTemp("", "notesankify-output-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		testLogger = log.New(GinkgoWriter, "[test] ", log.LstdFlags)
+
+		processor, err = pdf.NewProcessor(
+			tempDir,
+			outputDir,
+			models.PageDimensions{
+				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+			},
+			testLogger,
+		)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		// Only cleanup if the test didn't already call Cleanup()
-		if _, err := os.Stat(tempDir); err == nil {
-			err := os.RemoveAll(tempDir)
-			Expect(err).NotTo(HaveOccurred())
-		}
-	})
-
-	Context("Initialization", func() {
-		It("should create the temporary directory", func() {
-			newTempDir := filepath.Join(tempDir, "newtemp")
-			_, err := pdf.NewProcessor(newTempDir, models.PageDimensions{
-				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
-				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(newTempDir).To(BeADirectory())
-		})
-	})
-
-	Context("Cleanup", func() {
-		It("should remove the temporary directory", func() {
-			Expect(tempDir).To(BeADirectory())
-
-			err := processor.Cleanup()
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(tempDir).NotTo(BeADirectory())
-		})
+		err := os.RemoveAll(tempDir)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.RemoveAll(outputDir)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("Goodnotes dimensions", func() {
@@ -117,5 +105,27 @@ var _ = Describe("PDF Processor", func() {
 				false,
 			),
 		)
+	})
+
+	Context("Directory management", func() {
+		It("should create output directory if it doesn't exist", func() {
+			newOutputDir := filepath.Join(outputDir, "nested", "output")
+			_, err := pdf.NewProcessor(
+				tempDir,
+				newOutputDir,
+				models.PageDimensions{Width: utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH, Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT},
+				testLogger,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(newOutputDir).To(BeADirectory())
+		})
+
+		It("should cleanup temporary directory", func() {
+			Expect(tempDir).To(BeADirectory())
+			err := processor.Cleanup()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(tempDir).NotTo(BeADirectory())
+			Expect(outputDir).To(BeADirectory())
+		})
 	})
 })
