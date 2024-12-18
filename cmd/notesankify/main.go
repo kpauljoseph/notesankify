@@ -71,6 +71,12 @@ func main() {
 
 	ankiService := anki.NewService(logger)
 
+	logger.Printf("Checking Anki connection...")
+	if err := ankiService.CheckConnection(); err != nil {
+		logger.Fatalf("Anki connection error: %v", err)
+	}
+	logger.Printf("Successfully connected to Anki")
+
 	if err := ankiService.CreateDeck(cfg.AnkiDeckName); err != nil {
 		logger.Fatalf("Error creating Anki deck: %v", err)
 	}

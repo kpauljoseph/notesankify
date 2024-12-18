@@ -48,6 +48,23 @@ func NewService(logger *log.Logger) *Service {
 	}
 }
 
+func (s *Service) CheckConnection() error {
+	request := AnkiConnectRequest{
+		Action:  "version",
+		Version: 6,
+	}
+
+	_, err := s.sendRequest(request)
+	if err != nil {
+		return fmt.Errorf("could not connect to Anki. Please ensure:\n" +
+			"1. Anki is running https://apps.ankiweb.net/#download\n" +
+			"2. AnkiConnect add-on is installed (code: 2055492159) https://ankiweb.net/shared/info/2055492159\n" +
+			"3. Anki has been restarted after installing AnkiConnect")
+	}
+
+	return nil
+}
+
 func (s *Service) CreateDeck(deckName string) error {
 	s.logger.Printf("Creating deck: %s", deckName)
 	request := AnkiConnectRequest{

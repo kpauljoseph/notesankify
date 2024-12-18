@@ -4,6 +4,8 @@ Convert PDF notes to Anki flashcards automatically. This tool monitors a directo
 
 ## Usage
 
+- Download and open Anki Desktop App: https://apps.ankiweb.net/#download
+- Install AnkiConnect app: https://ankiweb.net/shared/info/2055492159
 - Add pdf files containing flashcards to a directory.
 - Provide the directory name to the -pdf-dir flag (eg: PDF_Files)
 - Provide a deck name that you want to add the cards to.
