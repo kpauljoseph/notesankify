@@ -2,6 +2,19 @@
 
 Convert PDF notes to Anki flashcards automatically. This tool monitors a directory for PDFs containing flashcards, processes them based on specified page dimensions, and creates/updates Anki decks while maintaining learning progress.
 
+## Usage
+
+- Add pdf files containing flashcards to a directory.
+- Provide the directory name to the -pdf-dir flag (eg: PDF_Files)
+- Provide a deck name that you want to add the cards to.
+  -  eg: "Parent Folder :: My Anki Deck" will create a folder named "Parent Folder"
+      and add the deck named "My Anki Deck" under that folder.
+  - We can nest multiple folders by separating it with "::"
+
+```
+./notesankify -pdf-dir ../PDF_Files -output-dir ./flashcards -deck-name "Parent Folder :: My Anki Deck" -verbose
+```
+
 ## Features
 
 - PDF flashcard detection based on page dimensions
@@ -103,8 +116,6 @@ We use Go's built-in testing framework with testify for assertions:
 
 ```bash
 make test        # Run unit tests
-make test-int    # Run integration tests
-make test-all    # Run all tests with coverage
 ```
 
 ## Contributing
