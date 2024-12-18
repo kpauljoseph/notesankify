@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -232,7 +233,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			}
 
 			for _, pageNum := range expectedPageNums {
-				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
+				pdfBase := filepath.Base(pdfPath)
+				pdfName := strings.TrimSuffix(pdfBase, filepath.Ext(pdfBase))
+				filename := fmt.Sprintf("%s_page%d.png", pdfName, pageNum)
 				filePath := filepath.Join(outputDir, filename)
 				Expect(filePath).To(BeAnExistingFile(),
 					"Expected file for page %d not found: %s", pageNum, filename)
