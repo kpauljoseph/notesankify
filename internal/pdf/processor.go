@@ -3,6 +3,7 @@ package pdf
 import (
 	"context"
 	"fmt"
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"image"
 	"image/png"
 	"log"
@@ -15,9 +16,6 @@ import (
 )
 
 const (
-	GoodnotesPtWidth  = 455.04
-	GoodnotesPtHeight = 587.52
-
 	DimensionTolerance = 1.0
 
 	QuestionKeyword = "QUESTION"
@@ -27,6 +25,7 @@ const (
 type ProcessingStats struct {
 	PDFPath        string
 	FlashcardCount int
+	ImagePairs     []ImagePair
 }
 
 type Processor struct {
@@ -34,6 +33,7 @@ type Processor struct {
 	outputDir     string
 	flashcardSize models.PageDimensions
 	logger        *log.Logger
+	splitter      *Splitter
 }
 
 func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *log.Logger) (*Processor, error) {
@@ -45,11 +45,17 @@ func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	splitter, err := NewSplitter(outputDir, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create splitter: %w", err)
+	}
+
 	return &Processor{
 		tempDir:       tempDir,
 		outputDir:     outputDir,
 		flashcardSize: flashcardSize,
 		logger:        logger,
+		splitter:      splitter,
 	}, nil
 }
 
@@ -102,17 +108,24 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 					return stats, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}
 
-				pdfBase := filepath.Base(pdfPath)
-				pdfName := strings.TrimSuffix(pdfBase, filepath.Ext(pdfBase))
-				outName := fmt.Sprintf("%s_page%d.png", pdfName, pageNum)
-				outPath := filepath.Join(p.outputDir, outName)
+				// Save full image to temp directory first
+				tempImagePath := filepath.Join(p.tempDir, fmt.Sprintf("%s_page%d.png",
+					strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath)),
+					pageNum))
 
-				if err := saveImage(img, outPath); err != nil {
-					return stats, fmt.Errorf("failed to save image for page %d: %w", pageNum, err)
+				if err := saveImage(img, tempImagePath); err != nil {
+					return stats, fmt.Errorf("failed to save temp image for page %d: %w", pageNum, err)
 				}
 
+				// Split the image into question and answer
+				pair, err := p.splitter.SplitImage(tempImagePath)
+				if err != nil {
+					return stats, fmt.Errorf("failed to split image for page %d: %w", pageNum, err)
+				}
+
+				stats.ImagePairs = append(stats.ImagePairs, *pair)
 				stats.FlashcardCount++
-				p.logger.Printf("Saved flashcard: %s", outName)
+				p.logger.Printf("Split flashcard page %d into question and answer", pageNum)
 			}
 		}
 	}
@@ -121,11 +134,11 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 }
 
 func MatchesGoodnotesDimensions(width, height float64) bool {
-	widthMatch := abs(width-GoodnotesPtWidth) <= DimensionTolerance
-	heightMatch := abs(height-GoodnotesPtHeight) <= DimensionTolerance
+	widthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= DimensionTolerance
+	heightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= DimensionTolerance
 
-	rotatedWidthMatch := abs(width-GoodnotesPtHeight) <= DimensionTolerance
-	rotatedHeightMatch := abs(height-GoodnotesPtWidth) <= DimensionTolerance
+	rotatedWidthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= DimensionTolerance
+	rotatedHeightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= DimensionTolerance
 
 	return (widthMatch && heightMatch) || (rotatedWidthMatch && rotatedHeightMatch)
 }

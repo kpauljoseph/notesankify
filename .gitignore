@@ -29,3 +29,6 @@ vendor/
 ._*
 .Spotlight-V100
 .Trashes
+
+# Output files
+flashcards

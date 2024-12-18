@@ -95,47 +95,46 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
+			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
 			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
-			expectedPageNums := []int{1, 2, 3, 4, 5}
+			// expectedPages is zero-based for internal use
+			expectedPages := []int{0, 1, 2, 3, 4}
 
 			By("Verifying all pages were processed")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
 
-			files, err := os.ReadDir(outputDir)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPageNums)))
-
-			for i, file := range files {
-				filePath := filepath.Join(outputDir, file.Name())
-				fmt.Printf("\n=== Output File %d ===\n", i)
-				fmt.Printf("Filename: %s\n", file.Name())
-				fmt.Printf("Path: %s\n", filePath)
-
-				Expect(filePath).To(BeAnExistingFile())
+			// Debug extracted files
+			for i, pair := range stats.ImagePairs {
+				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
+				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
+				fmt.Printf("Question: %s\n", pair.Question)
+				fmt.Printf("Answer: %s\n", pair.Answer)
 
 				// Get original page content for debugging
-				pageNum := expectedPageNums[i]
-				bounds, err := doc.Bound(pageNum)
-				if err == nil {
-					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
-				}
+				//bounds, err := doc.Bound(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				//}
+				//
+				//text, err := doc.Text(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Content:\n%s\n", text)
+				//}
 
-				text, err := doc.Text(pageNum)
-				if err == nil {
-					fmt.Printf("Original Content:\n%s\n", text)
-				}
-			}
+				// Verify files exist and follow naming convention
+				By(fmt.Sprintf("Checking page %d files", pageNum))
+				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
-			// Verify page order
-			for _, pageNum := range expectedPageNums {
-				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
-				filePath := filepath.Join(outputDir, filename)
-				Expect(filePath).To(BeAnExistingFile(),
-					"Expected file for page %d not found: %s", pageNum, filename)
+				Expect(pair.Question).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
+
+				Expect(pair.Answer).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
 			}
 		})
 
@@ -146,47 +145,45 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			//Debug Page content
+			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
 			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
-			expectedPageNums := []int{2, 3, 5, 6, 8}
+			expectedPages := []int{1, 2, 4, 5, 7}
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
 
-			files, err := os.ReadDir(outputDir)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPageNums)))
+			// Debug and verify extracted files
+			for i, pair := range stats.ImagePairs {
+				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
+				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
+				fmt.Printf("Question: %s\n", pair.Question)
+				fmt.Printf("Answer: %s\n", pair.Answer)
 
-			// Debug output files
-			for i, file := range files {
-				filePath := filepath.Join(outputDir, file.Name())
-				fmt.Printf("\n=== Output File %d ===\n", i)
-				fmt.Printf("Filename: %s\n", file.Name())
-				fmt.Printf("Path: %s\n", filePath)
+				// Get original page content for debugging
+				//bounds, err := doc.Bound(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				//}
+				//
+				//text, err := doc.Text(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Content:\n%s\n", text)
+				//}
 
-				Expect(filePath).To(BeAnExistingFile())
+				// Verify files exist and follow naming convention
+				By(fmt.Sprintf("Checking page %d files", pageNum))
+				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
-				pageNum := expectedPageNums[i]
-				bounds, err := doc.Bound(pageNum)
-				if err == nil {
-					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
-				}
+				Expect(pair.Question).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
 
-				text, err := doc.Text(pageNum)
-				if err == nil {
-					fmt.Printf("Original Content:\n%s\n", text)
-				}
-			}
-
-			for _, pageNum := range expectedPageNums {
-				filename := fmt.Sprintf("%s_page%d.png", filepath.Base(pdfPath[:len(pdfPath)-4]), pageNum)
-				filePath := filepath.Join(outputDir, filename)
-				Expect(filePath).To(BeAnExistingFile(),
-					"Expected file for page %d not found: %s", pageNum, filename)
+				Expect(pair.Answer).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
 			}
 		})
 
@@ -203,42 +200,39 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			defer doc.Close()
 
 			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
-			expectedPageNums := []int{2, 3, 5, 6, 8}
+			expectedPages := []int{1, 2, 4, 5, 7}
 
 			By("Extracting only Goodnotes standard sized pages with markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPageNums)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
 
-			files, err := os.ReadDir(outputDir)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(HaveLen(len(expectedPageNums)))
+			// Debug and verify extracted files
+			for i, pair := range stats.ImagePairs {
+				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
+				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
+				fmt.Printf("Question: %s\n", pair.Question)
+				fmt.Printf("Answer: %s\n", pair.Answer)
 
-			for i, file := range files {
-				filePath := filepath.Join(outputDir, file.Name())
-				fmt.Printf("\n=== Output File %d ===\n", i)
-				fmt.Printf("Filename: %s\n", file.Name())
-				fmt.Printf("Path: %s\n", filePath)
+				// Get original page content for debugging
+				//bounds, err := doc.Bound(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
+				//}
+				//
+				//text, err := doc.Text(expectedPages[i])
+				//if err == nil {
+				//	fmt.Printf("Original Content:\n%s\n", text)
+				//}
 
-				Expect(filePath).To(BeAnExistingFile())
+				// Verify files exist and follow naming convention
+				By(fmt.Sprintf("Checking page %d files", pageNum))
+				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
-				pageNum := expectedPageNums[i]
-				bounds, err := doc.Bound(pageNum)
-				if err == nil {
-					fmt.Printf("Original Dimensions: %.2f x %.2f\n", float64(bounds.Dx()), float64(bounds.Dy()))
-				}
+				Expect(pair.Question).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
 
-				text, err := doc.Text(pageNum)
-				if err == nil {
-					fmt.Printf("Original Content:\n%s\n", text)
-				}
-			}
-
-			for _, pageNum := range expectedPageNums {
-				pdfBase := filepath.Base(pdfPath)
-				pdfName := strings.TrimSuffix(pdfBase, filepath.Ext(pdfBase))
-				filename := fmt.Sprintf("%s_page%d.png", pdfName, pageNum)
-				filePath := filepath.Join(outputDir, filename)
-				Expect(filePath).To(BeAnExistingFile(),
-					"Expected file for page %d not found: %s", pageNum, filename)
+				Expect(pair.Answer).To(BeAnExistingFile())
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
 			}
 		})
 	})
