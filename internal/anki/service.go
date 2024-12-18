@@ -114,12 +114,23 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 }
 
 func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error {
+	var successCount, failCount int
+
 	for _, pair := range pairs {
 		if err := s.AddFlashcard(deckName, pair); err != nil {
 			s.logger.Printf("Error adding flashcard: %v", err)
+			failCount++
 			continue
 		}
+		successCount++
 	}
+
+	if failCount > 0 {
+		return fmt.Errorf("failed to add %d out of %d flashcards", failCount, len(pairs))
+	}
+
+	s.logger.Printf("Successfully added %d flashcards", successCount)
+
 	return nil
 }
 
@@ -151,34 +162,48 @@ func (s *Service) readAndEncodeImage(path string) (string, error) {
 }
 
 func (s *Service) sendRequest(req AnkiConnectRequest) (json.RawMessage, error) {
-	reqBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	var lastErr error
+	for attempt := 0; attempt < MaxRetries; attempt++ {
+		if attempt > 0 {
+			s.logger.Printf("Retrying request (attempt %d/%d)...", attempt+1, MaxRetries)
+			time.Sleep(RetryDelay)
+		}
+
+		reqBody, err := json.Marshal(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request: %w", err)
+		}
+
+		resp, err := http.Post(s.ankiConnectURL, "application/json", bytes.NewBuffer(reqBody))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			continue
+		}
+
+		var result struct {
+			Error  *string         `json:"error"`
+			Result json.RawMessage `json:"result"`
+		}
+
+		if err := json.Unmarshal(body, &result); err != nil {
+			lastErr = fmt.Errorf("failed to parse response: %w", err)
+			continue
+		}
+
+		if result.Error != nil {
+			lastErr = fmt.Errorf("anki error: %s", *result.Error)
+			continue
+		}
+
+		return result.Result, nil
 	}
 
-	resp, err := http.Post(s.ankiConnectURL, "application/json", bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	var result struct {
-		Error  *string         `json:"error"`
-		Result json.RawMessage `json:"result"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if result.Error != nil {
-		return nil, fmt.Errorf("anki error: %s", *result.Error)
-	}
-
-	return result.Result, nil
+	return nil, fmt.Errorf("after %d attempts: %v", MaxRetries, lastErr)
 }
