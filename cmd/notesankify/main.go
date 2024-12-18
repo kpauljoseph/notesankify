@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/kpauljoseph/notesankify/internal/anki"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	pdfDir := flag.String("pdf-dir", "", "directory containing PDF files (overrides config)")
 	outputDir := flag.String("output-dir", "flashcards", "directory to save processed flashcards")
+	ankiDeckName := flag.String("deck-name", "", "Deck name in Anki")
 	verbose := flag.Bool("verbose", false, "enable verbose logging")
 	flag.Parse()
 
@@ -36,6 +38,10 @@ func main() {
 
 	if _, err := os.Stat(cfg.PDFSourceDir); os.IsNotExist(err) {
 		logger.Fatalf("PDF directory does not exist: %s", cfg.PDFSourceDir)
+	}
+
+	if *ankiDeckName != "" {
+		cfg.AnkiDeckName = *ankiDeckName
 	}
 
 	processor, err := pdf.NewProcessor(
@@ -63,6 +69,12 @@ func main() {
 	var totalFlashcards int
 	logger.Printf("Found %d PDFs to process", len(pdfs))
 
+	ankiService := anki.NewService(logger)
+
+	if err := ankiService.CreateDeck(cfg.AnkiDeckName); err != nil {
+		logger.Fatalf("Error creating Anki deck: %v", err)
+	}
+
 	for _, pdfPath := range pdfs {
 		stats, err := processor.ProcessPDF(context.Background(), pdfPath)
 		if err != nil {
@@ -72,6 +84,11 @@ func main() {
 		if stats.FlashcardCount > 0 {
 			logger.Printf("Found %d flashcards in %s", stats.FlashcardCount, filepath.Base(pdfPath))
 			totalFlashcards += stats.FlashcardCount
+
+			if err := ankiService.AddAllFlashcards(cfg.AnkiDeckName, stats.ImagePairs); err != nil {
+				logger.Printf("Error adding flashcards to Anki: %v", err)
+			}
+
 		}
 	}
 
