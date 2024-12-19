@@ -2,9 +2,9 @@ package pdf
 
 import (
 	"fmt"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"image"
 	"image/png"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +17,10 @@ type ImagePair struct {
 
 type Splitter struct {
 	outputDir string
-	logger    *log.Logger
+	logger    *logger.Logger
 }
 
-func NewSplitter(outputDir string, logger *log.Logger) (*Splitter, error) {
+func NewSplitter(outputDir string, logger *logger.Logger) (*Splitter, error) {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -76,8 +76,8 @@ func (s *Splitter) SplitImage(imagePath string) (*ImagePair, error) {
 		return nil, fmt.Errorf("failed to save answer image: %w", err)
 	}
 
-	s.logger.Printf("Created question image: %s", questionPath)
-	s.logger.Printf("Created answer image: %s", answerPath)
+	s.logger.Debug("Created question image: %s", questionPath)
+	s.logger.Debug("Created answer image: %s", answerPath)
 
 	return &ImagePair{
 		Question: questionPath,

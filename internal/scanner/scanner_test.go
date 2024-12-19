@@ -3,7 +3,6 @@ package scanner_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -11,12 +10,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/kpauljoseph/notesankify/internal/scanner"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 )
 
 var _ = Describe("Scanner", func() {
 	var (
 		testDir    string
-		testLogger *log.Logger
+		testLogger *logger.Logger
 		ctx        context.Context
 	)
 
@@ -25,7 +25,14 @@ var _ = Describe("Scanner", func() {
 		testDir, err = os.MkdirTemp("", "scanner-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		testLogger = log.New(GinkgoWriter, "[test] ", log.LstdFlags)
+		testLogger = logger.New(
+			logger.WithOutput(GinkgoWriter),
+			logger.WithPrefix("[test] "),
+			logger.WithFlags(0), // Minimal flags for test output
+		)
+		testLogger.SetVerbose(true)
+		testLogger.SetLevel(logger.LevelTrace)
+
 		ctx = context.Background()
 	})
 
@@ -33,7 +40,7 @@ var _ = Describe("Scanner", func() {
 		os.RemoveAll(testDir)
 	})
 
-	Context("when scanning an empty directory", func() {
+	When("when scanning an empty directory", func() {
 		It("should return an error", func() {
 			s := scanner.New(testLogger)
 			_, err := s.FindPDFs(ctx, testDir)
@@ -42,7 +49,7 @@ var _ = Describe("Scanner", func() {
 		})
 	})
 
-	Context("when scanning a directory with PDFs", func() {
+	When("when scanning a directory with PDFs", func() {
 		BeforeEach(func() {
 			for i := 1; i <= 3; i++ {
 				err := os.WriteFile(
@@ -69,12 +76,12 @@ var _ = Describe("Scanner", func() {
 			Expect(pdfs).To(HaveLen(3))
 
 			for _, pdf := range pdfs {
-				Expect(pdf).To(HaveSuffix(".pdf"))
+				Expect(pdf.RelativePath).To(HaveSuffix(".pdf"))
 			}
 		})
 	})
 
-	Context("when scanning nested directories", func() {
+	When("when scanning nested directories", func() {
 		BeforeEach(func() {
 			nestedDir := filepath.Join(testDir, "nested")
 			err := os.MkdirAll(nestedDir, 0755)
@@ -100,13 +107,13 @@ var _ = Describe("Scanner", func() {
 
 			var filenames []string
 			for _, pdf := range pdfs {
-				filenames = append(filenames, filepath.Base(pdf))
+				filenames = append(filenames, filepath.Base(pdf.AbsolutePath))
 			}
 			Expect(filenames).To(ConsistOf("root.pdf", "nested.pdf"))
 		})
 	})
 
-	Context("when context is cancelled", func() {
+	When("when context is cancelled", func() {
 		It("should stop scanning", func() {
 			deepDir := filepath.Join(testDir, "deep", "deeper", "deepest")
 			err := os.MkdirAll(deepDir, 0755)

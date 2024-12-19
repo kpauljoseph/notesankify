@@ -1,10 +1,10 @@
 package pdf_test
 
 import (
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -12,12 +12,23 @@ import (
 	"github.com/kpauljoseph/notesankify/pkg/models"
 )
 
+func processorTestLogger() *logger.Logger {
+	log := logger.New(
+		logger.WithOutput(GinkgoWriter),
+		logger.WithPrefix("[pdf-test] "),
+		logger.WithFlags(0),
+	)
+	log.SetVerbose(true)
+	log.SetLevel(logger.LevelTrace)
+	return log
+}
+
 var _ = Describe("PDF Processor", func() {
 	var (
 		processor  *pdf.Processor
 		tempDir    string
 		outputDir  string
-		testLogger *log.Logger
+		testLogger *logger.Logger
 	)
 
 	BeforeEach(func() {
@@ -28,7 +39,10 @@ var _ = Describe("PDF Processor", func() {
 		outputDir, err = os.MkdirTemp("", "notesankify-output-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		testLogger = log.New(GinkgoWriter, "[test] ", log.LstdFlags)
+		testLogger = processorTestLogger()
+		testLogger.Debug("Setting up test environment")
+		testLogger.Debug("Temp directory: %s", tempDir)
+		testLogger.Debug("Output directory: %s", outputDir)
 
 		processor, err = pdf.NewProcessor(
 			tempDir,
@@ -43,15 +57,18 @@ var _ = Describe("PDF Processor", func() {
 	})
 
 	AfterEach(func() {
+		testLogger.Debug("Cleaning up test environment")
 		err := os.RemoveAll(tempDir)
 		Expect(err).NotTo(HaveOccurred())
 		err = os.RemoveAll(outputDir)
 		Expect(err).NotTo(HaveOccurred())
+		testLogger.Debug("Test cleanup completed")
 	})
 
 	Context("Goodnotes dimensions", func() {
 		DescribeTable("matchesGoodnotesDimensions",
 			func(width, height float64, shouldMatch bool) {
+				testLogger.Trace("Testing dimensions: %.2f x %.2f", width, height)
 				result := pdf.MatchesGoodnotesDimensions(width, height)
 				Expect(result).To(Equal(shouldMatch))
 			},
@@ -81,6 +98,7 @@ var _ = Describe("PDF Processor", func() {
 	Context("Flashcard marker detection", func() {
 		DescribeTable("containsFlashcardMarkers",
 			func(text string, shouldMatch bool) {
+				testLogger.Trace("Testing marker text: %q", text)
 				result := pdf.ContainsFlashcardMarkers(text)
 				Expect(result).To(Equal(shouldMatch))
 			},
@@ -110,22 +128,30 @@ var _ = Describe("PDF Processor", func() {
 	Context("Directory management", func() {
 		It("should create output directory if it doesn't exist", func() {
 			newOutputDir := filepath.Join(outputDir, "nested", "output")
+			testLogger.Debug("Testing nested output directory creation: %s", newOutputDir)
+
 			_, err := pdf.NewProcessor(
 				tempDir,
 				newOutputDir,
-				models.PageDimensions{Width: utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH, Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT},
+				models.PageDimensions{
+					Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+					Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+				},
 				testLogger,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newOutputDir).To(BeADirectory())
+			testLogger.Debug("Successfully created nested output directory")
 		})
 
 		It("should cleanup temporary directory", func() {
+			testLogger.Debug("Testing temporary directory cleanup")
 			Expect(tempDir).To(BeADirectory())
 			err := processor.Cleanup()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tempDir).NotTo(BeADirectory())
 			Expect(outputDir).To(BeADirectory())
+			testLogger.Debug("Successfully cleaned up temporary directory")
 		})
 	})
 })

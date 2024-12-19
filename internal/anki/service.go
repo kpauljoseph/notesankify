@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,7 +24,7 @@ const (
 
 type Service struct {
 	ankiConnectURL string
-	logger         *log.Logger
+	logger         *logger.Logger
 }
 
 type AnkiConnectRequest struct {
@@ -41,7 +41,25 @@ type Note struct {
 	Tags      []string               `json:"tags"`
 }
 
-func NewService(logger *log.Logger) *Service {
+type NoteInfo struct {
+	NoteId    int      `json:"noteId"`
+	ModelName string   `json:"modelName"`
+	Fields    Fields   `json:"fields"`
+	Tags      []string `json:"tags"`
+}
+
+type Fields struct {
+	Front struct {
+		Value string `json:"value"`
+		Order int    `json:"order"`
+	} `json:"Front"`
+	Back struct {
+		Value string `json:"value"`
+		Order int    `json:"order"`
+	} `json:"Back"`
+}
+
+func NewService(logger *logger.Logger) *Service {
 	return &Service{
 		ankiConnectURL: DefaultAnkiConnectURL,
 		logger:         logger,
@@ -81,7 +99,72 @@ func (s *Service) CreateDeck(deckName string) error {
 	return err
 }
 
+func (s *Service) findExistingNote(front, back string) (int, error) {
+	s.logger.Debug("Searching for existing note...")
+
+	request := AnkiConnectRequest{
+		Action:  "findNotes",
+		Version: 6,
+		Params: map[string]interface{}{
+			"query": fmt.Sprintf("deck:%s", "\"*\""),
+		},
+	}
+
+	result, err := s.sendRequest(request)
+	if err != nil {
+		return 0, fmt.Errorf("failed to search notes: %w", err)
+	}
+
+	var noteIds []int
+	if err := json.Unmarshal(result, &noteIds); err != nil {
+		return 0, fmt.Errorf("failed to parse note IDs: %w", err)
+	}
+
+	s.logger.Printf("Found %d total notes to check", len(noteIds))
+
+	if len(noteIds) == 0 {
+		return 0, nil
+	}
+
+	// Get info for found notes
+	request = AnkiConnectRequest{
+		Action:  "notesInfo",
+		Version: 6,
+		Params: map[string]interface{}{
+			"notes": noteIds,
+		},
+	}
+
+	result, err = s.sendRequest(request)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get notes info: %w", err)
+	}
+
+	var notes []NoteInfo
+	if err := json.Unmarshal(result, &notes); err != nil {
+		return 0, fmt.Errorf("failed to parse notes info: %w", err)
+	}
+
+	// Compare content with detailed logging
+	for _, note := range notes {
+		if note.Fields.Front.Value == front && note.Fields.Back.Value == back {
+			s.logger.Info("Found exact match with note ID: %d", note.NoteId)
+			s.logger.Debug("Existing front: %s", truncateString(note.Fields.Front.Value, 100))
+			s.logger.Debug("New front: %s", truncateString(front, 100))
+			s.logger.Debug("Existing back: %s", truncateString(note.Fields.Back.Value, 100))
+			s.logger.Debug("New back: %s", truncateString(back, 100))
+			return note.NoteId, nil
+		}
+	}
+
+	s.logger.Printf("No matching note found")
+	return 0, nil
+}
+
 func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
+	s.logger.Printf("Processing new flashcard for deck: %s", deckName)
+	s.logger.Printf("Question image: %s Answer image: %s", pair.Question, pair.Answer)
+
 	questionImage, err := s.readAndEncodeImage(pair.Question)
 	if err != nil {
 		return fmt.Errorf("failed to read question image: %w", err)
@@ -92,12 +175,30 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		return fmt.Errorf("failed to read answer image: %w", err)
 	}
 
-	questionFileName := filepath.Base(pair.Question)
-	answerFileName := filepath.Base(pair.Answer)
+	// Generate content hash
+	contentHash, err := FlashcardHash(pair.Question, pair.Answer)
+	if err != nil {
+		return fmt.Errorf("failed to generate content hash: %w", err)
+	}
+	s.logger.Printf("Generated content hash: %s", contentHash)
+
+	front := fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Question))
+	back := fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Answer))
+
+	s.logger.Debug("Checking for existing note...")
+	existingNoteId, err := s.findExistingNote(front, back)
+	if err != nil {
+		s.logger.Printf("Warning: failed to check for existing note: %v", err)
+	} else if existingNoteId != 0 {
+		s.logger.Printf("Duplicate found - skipping flashcard with hash: %s", contentHash)
+		return nil
+	}
+
+	s.logger.Printf("No duplicate found, proceeding with adding new card")
 
 	if err := s.storeMediaFiles(map[string]string{
-		questionFileName: questionImage,
-		answerFileName:   answerImage,
+		filepath.Base(pair.Question): questionImage,
+		filepath.Base(pair.Answer):   answerImage,
 	}); err != nil {
 		return fmt.Errorf("failed to store media files: %w", err)
 	}
@@ -106,13 +207,13 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		DeckName:  deckName,
 		ModelName: DefaultModelName,
 		Fields: map[string]string{
-			"Front": fmt.Sprintf("<img src=\"%s\">", questionFileName),
-			"Back":  fmt.Sprintf("<img src=\"%s\">", answerFileName),
+			"Front": front,
+			"Back":  back,
 		},
 		Options: map[string]interface{}{
 			"allowDuplicate": false,
 		},
-		Tags: []string{"notesankify"},
+		Tags: []string{"notesankify", fmt.Sprintf("hash:%s", contentHash)},
 	}
 
 	request := AnkiConnectRequest{
@@ -128,8 +229,15 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		return fmt.Errorf("failed to add note: %w", err)
 	}
 
-	s.logger.Printf("Added flashcard: %s", questionFileName)
+	s.logger.Printf("Successfully added new flashcard with hash: %s", contentHash)
 	return nil
+}
+
+func truncateString(s string, maxLength int) string {
+	if len(s) <= maxLength {
+		return s
+	}
+	return s[:maxLength] + "..."
 }
 
 func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error {

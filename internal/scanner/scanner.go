@@ -3,7 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"os"
 	"path/filepath"
 )
@@ -14,10 +14,10 @@ type PDFFile struct {
 }
 
 type DirectoryScanner struct {
-	logger *log.Logger
+	logger *logger.Logger
 }
 
-func New(logger *log.Logger) *DirectoryScanner {
+func New(logger *logger.Logger) *DirectoryScanner {
 	return &DirectoryScanner{
 		logger: logger,
 	}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/gen2brain/go-fitz"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,6 +17,17 @@ import (
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/pkg/models"
 )
+
+func acceptanceTestLogger() *logger.Logger {
+	log := logger.New(
+		logger.WithOutput(GinkgoWriter),
+		logger.WithPrefix("[acceptance-test] "),
+		logger.WithFlags(0),
+	)
+	log.SetVerbose(true)
+	log.SetLevel(logger.LevelTrace)
+	return log
+}
 
 func getTestDataPath() string {
 	_, filename, _, ok := runtime.Caller(0)
@@ -35,12 +46,13 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		outputDir   string
 		ctx         context.Context
 		testDataDir string
-		testLogger  *log.Logger
+		testLogger  *logger.Logger
 	)
 
 	BeforeAll(func() {
+		testLogger = acceptanceTestLogger()
 		testDataDir = getTestDataPath()
-		fmt.Printf("Using test data directory: %s\n", testDataDir)
+		testLogger.Info("Using test data directory: %s", testDataDir)
 
 		files := []string{
 			"standard_flashcards.pdf",
@@ -52,8 +64,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			path := filepath.Join(testDataDir, file)
 			_, err := os.Stat(path)
 			if err != nil {
-				Fail(fmt.Sprintf("Required test file not found: %s", path))
+				testLogger.Fatal("Required test file not found: %s", path)
 			}
+			testLogger.Debug("Found required test file: %s", file)
 		}
 	})
 
@@ -66,7 +79,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		outputDir, err = os.MkdirTemp("/tmp", "notesankify-output-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		testLogger = log.New(GinkgoWriter, "[test] ", log.LstdFlags)
+		testLogger.Debug("Created temp directories:")
+		testLogger.Debug("- Temp dir: %s", tempDir)
+		testLogger.Debug("- Output dir: %s", outputDir)
 
 		processor, err = pdf.NewProcessor(
 			tempDir,
@@ -81,6 +96,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 	})
 
 	AfterEach(func() {
+		testLogger.Debug("Cleaning up test directories")
 		err := os.RemoveAll(tempDir)
 		Expect(err).NotTo(HaveOccurred())
 		err = os.RemoveAll(outputDir)
@@ -90,6 +106,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 	Context("Standard Flashcard Processing", Label("happy-path"), func() {
 		It("should process standard flashcard PDF correctly", func() {
 			pdfPath := filepath.Join(testDataDir, "standard_flashcards.pdf")
+			testLogger.Info("Testing standard flashcard processing: %s", filepath.Base(pdfPath))
 
 			By("Processing a PDF with only standard flashcard pages")
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
@@ -103,6 +120,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
 			// expectedPages is zero-based for internal use
 			expectedPages := []int{0, 1, 2, 3, 4}
+			testLogger.Debug("Expected pages to process: %v", expectedPages)
 
 			By("Verifying all pages were processed")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
@@ -111,9 +129,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			// Debug extracted files
 			for i, pair := range stats.ImagePairs {
 				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
-				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
-				fmt.Printf("Question: %s\n", pair.Question)
-				fmt.Printf("Answer: %s\n", pair.Answer)
+				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
+				testLogger.Debug("Question: %s", pair.Question)
+				testLogger.Debug("Answer: %s", pair.Answer)
 
 				// Get original page content for debugging
 				//bounds, err := doc.Bound(expectedPages[i])
@@ -141,7 +159,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		It("should extract flashcards from mixed content PDF with same sized pages", func() {
 			By("Processing a PDF with mixed content but same page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf")
+			testLogger.Info("Testing mixed content processing (same size): %s", filepath.Base(pdfPath))
 
+			By("Processing a PDF with mixed content but same page sizes")
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -152,6 +172,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
 			expectedPages := []int{1, 2, 4, 5, 7}
+			testLogger.Debug("Expected pages to process: %v", expectedPages)
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
@@ -160,9 +181,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			// Debug and verify extracted files
 			for i, pair := range stats.ImagePairs {
 				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
-				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
-				fmt.Printf("Question: %s\n", pair.Question)
-				fmt.Printf("Answer: %s\n", pair.Answer)
+				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
+				testLogger.Debug("Question: %s", pair.Question)
+				testLogger.Debug("Answer: %s", pair.Answer)
 
 				// Get original page content for debugging
 				//bounds, err := doc.Bound(expectedPages[i])
@@ -190,7 +211,9 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		It("should extract flashcards from mixed content PDF with different sized pages", func() {
 			By("Processing a PDF with mixed content and different page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_largeNormalPage_smallFlashcardPage.pdf")
+			testLogger.Info("Testing mixed content processing (different sizes): %s", filepath.Base(pdfPath))
 
+			By("Processing a PDF with mixed content and different page sizes")
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -201,6 +224,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
 			expectedPages := []int{1, 2, 4, 5, 7}
+			testLogger.Debug("Expected pages to process: %v", expectedPages)
 
 			By("Extracting only Goodnotes standard sized pages with markers")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
@@ -208,10 +232,10 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			// Debug and verify extracted files
 			for i, pair := range stats.ImagePairs {
-				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
-				fmt.Printf("\n=== Flashcard %d ===\n", pageNum)
-				fmt.Printf("Question: %s\n", pair.Question)
-				fmt.Printf("Answer: %s\n", pair.Answer)
+				pageNum := expectedPages[i] + 1
+				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
+				testLogger.Debug("Question: %s", pair.Question)
+				testLogger.Debug("Answer: %s", pair.Answer)
 
 				// Get original page content for debugging
 				//bounds, err := doc.Bound(expectedPages[i])

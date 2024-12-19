@@ -3,10 +3,10 @@ package pdf
 import (
 	"context"
 	"fmt"
+	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"image"
 	"image/png"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,11 +32,11 @@ type Processor struct {
 	tempDir       string
 	outputDir     string
 	flashcardSize models.PageDimensions
-	logger        *log.Logger
+	logger        *logger.Logger
 	splitter      *Splitter
 }
 
-func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *log.Logger) (*Processor, error) {
+func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *logger.Logger) (*Processor, error) {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -60,7 +60,7 @@ func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions
 }
 
 func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingStats, error) {
-	p.logger.Printf("Processing PDF: %s", pdfPath)
+	p.logger.Info("Processing PDF: %s", pdfPath)
 	stats := ProcessingStats{PDFPath: pdfPath}
 
 	doc, err := fitz.New(pdfPath)
@@ -85,7 +85,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			width := float64(bounds.Dx())
 			height := float64(bounds.Dy())
 
-			p.logger.Printf("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
+			p.logger.Debug("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
 			isStandardSize := MatchesGoodnotesDimensions(width, height)
 
@@ -125,7 +125,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 
 				stats.ImagePairs = append(stats.ImagePairs, *pair)
 				stats.FlashcardCount++
-				p.logger.Printf("Split flashcard page %d into question and answer", pageNum)
+				p.logger.Debug("Split flashcard page %d into question and answer", pageNum)
 			}
 		}
 	}
