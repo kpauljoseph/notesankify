@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 )
 
-type Stats struct {
-	PDFCount int
+type PDFFile struct {
+	AbsolutePath string // Full path to the file
+	RelativePath string // Path relative to root directory
 }
 
 type DirectoryScanner struct {
@@ -22,10 +23,10 @@ func New(logger *log.Logger) *DirectoryScanner {
 	}
 }
 
-func (s *DirectoryScanner) FindPDFs(ctx context.Context, dir string) ([]string, error) {
-	var pdfs []string
+func (s *DirectoryScanner) FindPDFs(ctx context.Context, rootDir string) ([]PDFFile, error) {
+	var pdfs []PDFFile
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -45,7 +46,17 @@ func (s *DirectoryScanner) FindPDFs(ctx context.Context, dir string) ([]string, 
 			return nil
 		}
 
-		pdfs = append(pdfs, path)
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			s.logger.Printf("Warning: couldn't get relative path for %s: %v", path, err)
+			relPath = filepath.Base(path)
+		}
+
+		pdfs = append(pdfs, PDFFile{
+			AbsolutePath: path,
+			RelativePath: relPath,
+		})
+
 		return nil
 	})
 
@@ -54,7 +65,7 @@ func (s *DirectoryScanner) FindPDFs(ctx context.Context, dir string) ([]string, 
 	}
 
 	if len(pdfs) == 0 {
-		return nil, fmt.Errorf("no PDF files found in %s or its subdirectories", dir)
+		return nil, fmt.Errorf("no PDF files found in %s or its subdirectories", rootDir)
 	}
 
 	return pdfs, nil

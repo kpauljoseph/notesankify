@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/kpauljoseph/notesankify/internal/anki"
 	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/kpauljoseph/notesankify/internal/anki"
 	"github.com/kpauljoseph/notesankify/internal/config"
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/internal/scanner"
@@ -18,7 +18,7 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	pdfDir := flag.String("pdf-dir", "", "directory containing PDF files (overrides config)")
 	outputDir := flag.String("output-dir", "flashcards", "directory to save processed flashcards")
-	ankiDeckName := flag.String("deck-name", "", "Deck name in Anki")
+	rootDeckName := flag.String("root-deck", "", "root deck name for organizing flashcards (optional)")
 	verbose := flag.Bool("verbose", false, "enable verbose logging")
 	flag.Parse()
 
@@ -38,10 +38,6 @@ func main() {
 
 	if _, err := os.Stat(cfg.PDFSourceDir); os.IsNotExist(err) {
 		logger.Fatalf("PDF directory does not exist: %s", cfg.PDFSourceDir)
-	}
-
-	if *ankiDeckName != "" {
-		cfg.AnkiDeckName = *ankiDeckName
 	}
 
 	processor, err := pdf.NewProcessor(
@@ -66,7 +62,6 @@ func main() {
 		logger.Fatalf("Error finding PDFs: %v", err)
 	}
 
-	var totalFlashcards int
 	logger.Printf("Found %d PDFs to process", len(pdfs))
 
 	ankiService := anki.NewService(logger)
@@ -77,24 +72,31 @@ func main() {
 	}
 	logger.Printf("Successfully connected to Anki")
 
-	if err := ankiService.CreateDeck(cfg.AnkiDeckName); err != nil {
-		logger.Fatalf("Error creating Anki deck: %v", err)
-	}
-
-	for _, pdfPath := range pdfs {
-		stats, err := processor.ProcessPDF(context.Background(), pdfPath)
+	var totalFlashcards int
+	for _, pdf := range pdfs {
+		stats, err := processor.ProcessPDF(context.Background(), pdf.AbsolutePath)
 		if err != nil {
-			logger.Printf("Error processing %s: %v", pdfPath, err)
+			logger.Printf("Error processing %s: %v", pdf.RelativePath, err)
 			continue
 		}
+
 		if stats.FlashcardCount > 0 {
-			logger.Printf("Found %d flashcards in %s", stats.FlashcardCount, filepath.Base(pdfPath))
+			// Create deck name based on file path
+			deckName := anki.GetDeckNameFromPath(*rootDeckName, pdf.RelativePath)
+			logger.Printf("Found %d flashcards in %s", stats.FlashcardCount, pdf.RelativePath)
 			totalFlashcards += stats.FlashcardCount
 
-			if err := ankiService.AddAllFlashcards(cfg.AnkiDeckName, stats.ImagePairs); err != nil {
-				logger.Printf("Error adding flashcards to Anki: %v", err)
+			// Create deck and add flashcards
+			if err := ankiService.CreateDeck(deckName); err != nil {
+				logger.Printf("Error creating deck %s: %v", deckName, err)
+				continue
 			}
+			logger.Printf("Created/Updated deck: %s", deckName)
 
+			if err := ankiService.AddAllFlashcards(deckName, stats.ImagePairs); err != nil {
+				logger.Printf("Error adding flashcards to deck %s: %v", deckName, err)
+				continue
+			}
 		}
 	}
 

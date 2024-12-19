@@ -52,10 +52,12 @@ func (s *Service) CheckConnection() error {
 	request := AnkiConnectRequest{
 		Action:  "version",
 		Version: 6,
+		Params:  map[string]interface{}{},
 	}
 
 	_, err := s.sendRequest(request)
 	if err != nil {
+		s.logger.Printf("Error sending request to Anki: %v", err)
 		return fmt.Errorf("could not connect to Anki. Please ensure:\n" +
 			"1. Anki is running https://apps.ankiweb.net/#download\n" +
 			"2. AnkiConnect add-on is installed (code: 2055492159) https://ankiweb.net/shared/info/2055492159\n" +
