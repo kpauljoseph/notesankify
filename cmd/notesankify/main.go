@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-	"path/filepath"
-
 	"github.com/kpauljoseph/notesankify/internal/anki"
 	"github.com/kpauljoseph/notesankify/internal/config"
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/internal/scanner"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/models"
+	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -38,6 +37,17 @@ func main() {
 		log.Debug("Verbose logging enabled")
 	}
 
+	// TODO: Add cleanup to account for termination case
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
+	//sigChan := make(chan os.Signal, 1)
+	//signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	//go func() {
+	//	<-sigChan
+	//	log.Info("Received interrupt signal, starting cleanup...")
+	//	cancel()
+	//}()
+
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatal("Error loading config: %v", err)
@@ -63,7 +73,18 @@ func main() {
 	if err != nil {
 		log.Fatal("Error initializing processor: %v", err)
 	}
+
 	defer processor.Cleanup()
+
+	//cleanUp := func() {
+	//	log.Info("Running cleanup operations...")
+	//	err := processor.Cleanup()
+	//	if err != nil {
+	//		log.Info("Error during cleanup: %v", err)
+	//	}
+	//	log.Info("Cleanup completed")
+	//}
+	//defer cleanUp()
 
 	dirScanner := scanner.New(log)
 

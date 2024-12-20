@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/kpauljoseph/notesankify/internal/pdf"
@@ -17,7 +18,7 @@ import (
 
 const (
 	DefaultAnkiConnectURL = "http://localhost:8765"
-	DefaultModelName      = "Basic"
+	NotesAnkifyModelName  = "NotesAnkify"
 	MaxRetries            = 3
 	RetryDelay            = 500 * time.Millisecond
 )
@@ -57,6 +58,10 @@ type Fields struct {
 		Value string `json:"value"`
 		Order int    `json:"order"`
 	} `json:"Back"`
+	Hash struct {
+		Value string `json:"value"`
+		Order int    `json:"order"`
+	} `json:"Hash"`
 }
 
 func NewService(logger *logger.Logger) *Service {
@@ -66,16 +71,80 @@ func NewService(logger *logger.Logger) *Service {
 	}
 }
 
+func (s *Service) ensureModelExists() error {
+	request := AnkiConnectRequest{
+		Action:  "modelNames",
+		Version: ANKI_CONNECT_VERSION,
+		Params:  map[string]interface{}{},
+	}
+
+	result, err := s.sendRequest(request)
+	if err != nil {
+		return fmt.Errorf("failed to get models: %w", err)
+	}
+
+	var modelNames []string
+	if err := json.Unmarshal(result, &modelNames); err != nil {
+		return fmt.Errorf("failed to parse model names: %w", err)
+	}
+
+	for _, name := range modelNames {
+		if name == NotesAnkifyModelName {
+			s.logger.Debug("NotesAnkify model already exists")
+			return nil
+		}
+	}
+
+	createRequest := AnkiConnectRequest{
+		Action:  "createModel",
+		Version: ANKI_CONNECT_VERSION,
+		Params: map[string]interface{}{
+			"modelName": NotesAnkifyModelName,
+			"inOrderFields": []string{
+				"Front",
+				"Back",
+				"Hash",
+			},
+			"css": `.card {
+                font-family: arial;
+                font-size: 20px;
+                text-align: center;
+                color: black;
+                background-color: white;
+            }
+            .hash { display: none; }`,
+			"cardTemplates": []map[string]interface{}{
+				{
+					"Name": "Card 1",
+					"Front": `{{Front}}
+                        <div class="hash">{{Hash}}</div>`,
+					"Back": `{{FrontSide}}
+                        <hr id="answer">
+                        {{Back}}`,
+				},
+			},
+		},
+	}
+
+	_, err = s.sendRequest(createRequest)
+	if err != nil {
+		return fmt.Errorf("failed to create model: %w", err)
+	}
+
+	s.logger.Info("Created NotesAnkify model")
+	return nil
+}
+
 func (s *Service) CheckConnection() error {
 	request := AnkiConnectRequest{
 		Action:  "version",
-		Version: 6,
+		Version: ANKI_CONNECT_VERSION,
 		Params:  map[string]interface{}{},
 	}
 
 	_, err := s.sendRequest(request)
 	if err != nil {
-		s.logger.Printf("Error sending request to Anki: %v", err)
+		s.logger.Info("Error sending request to Anki: %v", err)
 		return fmt.Errorf("could not connect to Anki. Please ensure:\n" +
 			"1. Anki is running https://apps.ankiweb.net/#download\n" +
 			"2. AnkiConnect add-on is installed (code: 2055492159) https://ankiweb.net/shared/info/2055492159\n" +
@@ -86,10 +155,10 @@ func (s *Service) CheckConnection() error {
 }
 
 func (s *Service) CreateDeck(deckName string) error {
-	s.logger.Printf("Creating deck: %s", deckName)
+	s.logger.Info("Creating deck: %s", deckName)
 	request := AnkiConnectRequest{
 		Action:  "createDeck",
-		Version: 6,
+		Version: ANKI_CONNECT_VERSION,
 		Params: map[string]string{
 			"deck": deckName,
 		},
@@ -99,14 +168,12 @@ func (s *Service) CreateDeck(deckName string) error {
 	return err
 }
 
-func (s *Service) findExistingNote(front, back string) (int, error) {
-	s.logger.Debug("Searching for existing note...")
-
+func (s *Service) findExistingNoteByHash(hash string) (int, error) {
 	request := AnkiConnectRequest{
 		Action:  "findNotes",
-		Version: 6,
+		Version: ANKI_CONNECT_VERSION,
 		Params: map[string]interface{}{
-			"query": fmt.Sprintf("deck:%s", "\"*\""),
+			"query": fmt.Sprintf("Hash:%s", hash),
 		},
 	}
 
@@ -120,50 +187,36 @@ func (s *Service) findExistingNote(front, back string) (int, error) {
 		return 0, fmt.Errorf("failed to parse note IDs: %w", err)
 	}
 
-	s.logger.Printf("Found %d total notes to check", len(noteIds))
-
-	if len(noteIds) == 0 {
-		return 0, nil
+	if len(noteIds) > 0 {
+		return noteIds[0], nil
 	}
 
-	// Get info for found notes
-	request = AnkiConnectRequest{
-		Action:  "notesInfo",
-		Version: 6,
-		Params: map[string]interface{}{
-			"notes": noteIds,
-		},
-	}
-
-	result, err = s.sendRequest(request)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get notes info: %w", err)
-	}
-
-	var notes []NoteInfo
-	if err := json.Unmarshal(result, &notes); err != nil {
-		return 0, fmt.Errorf("failed to parse notes info: %w", err)
-	}
-
-	// Compare content with detailed logging
-	for _, note := range notes {
-		if note.Fields.Front.Value == front && note.Fields.Back.Value == back {
-			s.logger.Info("Found exact match with note ID: %d", note.NoteId)
-			s.logger.Debug("Existing front: %s", truncateString(note.Fields.Front.Value, 100))
-			s.logger.Debug("New front: %s", truncateString(front, 100))
-			s.logger.Debug("Existing back: %s", truncateString(note.Fields.Back.Value, 100))
-			s.logger.Debug("New back: %s", truncateString(back, 100))
-			return note.NoteId, nil
-		}
-	}
-
-	s.logger.Printf("No matching note found")
 	return 0, nil
 }
 
 func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
-	s.logger.Printf("Processing new flashcard for deck: %s", deckName)
-	s.logger.Printf("Question image: %s Answer image: %s", pair.Question, pair.Answer)
+	if err := s.ensureModelExists(); err != nil {
+		return fmt.Errorf("failed to ensure model exists: %w", err)
+	}
+
+	s.logger.Debug("Processing new flashcard for deck: %s", deckName)
+	s.logger.Debug("Question image: %s", pair.Question)
+	s.logger.Debug("Answer image: %s", pair.Answer)
+
+	contentHash, err := FlashcardHash(pair.Question, pair.Answer)
+	if err != nil {
+		return fmt.Errorf("failed to generate content hash: %w", err)
+	}
+	s.logger.Debug("Generated content hash: %s", contentHash)
+
+	// Check for existing note with same hash
+	existingNoteId, err := s.findExistingNoteByHash(contentHash)
+	if err != nil {
+		s.logger.Debug("Warning: failed to check for existing note: %v", err)
+	} else if existingNoteId != 0 {
+		s.logger.Info("Skipping duplicate flashcard with hash: %s", contentHash)
+		return nil
+	}
 
 	questionImage, err := s.readAndEncodeImage(pair.Question)
 	if err != nil {
@@ -175,27 +228,6 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		return fmt.Errorf("failed to read answer image: %w", err)
 	}
 
-	// Generate content hash
-	contentHash, err := FlashcardHash(pair.Question, pair.Answer)
-	if err != nil {
-		return fmt.Errorf("failed to generate content hash: %w", err)
-	}
-	s.logger.Printf("Generated content hash: %s", contentHash)
-
-	front := fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Question))
-	back := fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Answer))
-
-	s.logger.Debug("Checking for existing note...")
-	existingNoteId, err := s.findExistingNote(front, back)
-	if err != nil {
-		s.logger.Printf("Warning: failed to check for existing note: %v", err)
-	} else if existingNoteId != 0 {
-		s.logger.Printf("Duplicate found - skipping flashcard with hash: %s", contentHash)
-		return nil
-	}
-
-	s.logger.Printf("No duplicate found, proceeding with adding new card")
-
 	if err := s.storeMediaFiles(map[string]string{
 		filepath.Base(pair.Question): questionImage,
 		filepath.Base(pair.Answer):   answerImage,
@@ -205,20 +237,21 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 
 	note := Note{
 		DeckName:  deckName,
-		ModelName: DefaultModelName,
+		ModelName: NotesAnkifyModelName,
 		Fields: map[string]string{
-			"Front": front,
-			"Back":  back,
+			"Front": fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Question)),
+			"Back":  fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Answer)),
+			"Hash":  contentHash,
 		},
 		Options: map[string]interface{}{
 			"allowDuplicate": false,
 		},
-		Tags: []string{"notesankify", fmt.Sprintf("hash:%s", contentHash)},
+		Tags: []string{"notesankify", getDeckNameUnderscoreSeparatedForTag(deckName)},
 	}
 
 	request := AnkiConnectRequest{
 		Action:  "addNote",
-		Version: 6,
+		Version: ANKI_CONNECT_VERSION,
 		Params: map[string]interface{}{
 			"note": note,
 		},
@@ -229,15 +262,8 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		return fmt.Errorf("failed to add note: %w", err)
 	}
 
-	s.logger.Printf("Successfully added new flashcard with hash: %s", contentHash)
+	s.logger.Debug("Successfully added new flashcard with hash: %s", contentHash)
 	return nil
-}
-
-func truncateString(s string, maxLength int) string {
-	if len(s) <= maxLength {
-		return s
-	}
-	return s[:maxLength] + "..."
 }
 
 func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error {
@@ -245,7 +271,7 @@ func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error
 
 	for _, pair := range pairs {
 		if err := s.AddFlashcard(deckName, pair); err != nil {
-			s.logger.Printf("Error adding flashcard: %v", err)
+			s.logger.Debug("Error adding flashcard: %v", err)
 			failCount++
 			continue
 		}
@@ -256,7 +282,7 @@ func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error
 		return fmt.Errorf("failed to add %d out of %d flashcards", failCount, len(pairs))
 	}
 
-	s.logger.Printf("Successfully added %d flashcards", successCount)
+	s.logger.Debug("Successfully added %d flashcards", successCount)
 
 	return nil
 }
@@ -265,7 +291,7 @@ func (s *Service) storeMediaFiles(files map[string]string) error {
 	for filename, data := range files {
 		request := AnkiConnectRequest{
 			Action:  "storeMediaFile",
-			Version: 6,
+			Version: ANKI_CONNECT_VERSION,
 			Params: map[string]string{
 				"filename": filename,
 				"data":     data,
@@ -292,7 +318,7 @@ func (s *Service) sendRequest(req AnkiConnectRequest) (json.RawMessage, error) {
 	var lastErr error
 	for attempt := 0; attempt < MaxRetries; attempt++ {
 		if attempt > 0 {
-			s.logger.Printf("Retrying request (attempt %d/%d)...", attempt+1, MaxRetries)
+			s.logger.Info("Retrying request (attempt %d/%d)...", attempt+1, MaxRetries)
 			time.Sleep(RetryDelay)
 		}
 
@@ -333,4 +359,8 @@ func (s *Service) sendRequest(req AnkiConnectRequest) (json.RawMessage, error) {
 	}
 
 	return nil, fmt.Errorf("after %d attempts: %v", MaxRetries, lastErr)
+}
+
+func getDeckNameUnderscoreSeparatedForTag(deckName string) string {
+	return strings.ReplaceAll(strings.TrimSpace(deckName), " ", "_")
 }

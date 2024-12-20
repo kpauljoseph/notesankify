@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+const (
+	ANKI_CONNECT_VERSION = 6
+)
+
 func GetDeckNameFromPath(rootPrefix string, relativePath string) string {
 	// Get directory path without the file name
 	dirPath := filepath.Dir(relativePath)
