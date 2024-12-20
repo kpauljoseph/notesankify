@@ -36,6 +36,8 @@ type Processor struct {
 	splitter      *Splitter
 }
 
+var _ PDFProcessor = (*Processor)(nil)
+
 func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *logger.Logger) (*Processor, error) {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
