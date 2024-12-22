@@ -64,6 +64,17 @@ type Fields struct {
 	} `json:"Hash"`
 }
 
+type ProcessingReport struct {
+	TotalProcessed  int
+	AddedCount      int
+	SkippedCount    int
+	SkippedCards    []string
+	ProcessedPDFs   int
+	TotalFlashcards int
+	StartTime       time.Time
+	EndTime         time.Time
+}
+
 func NewService(logger *logger.Logger) *Service {
 	return &Service{
 		ankiConnectURL: DefaultAnkiConnectURL,
@@ -194,27 +205,23 @@ func (s *Service) findExistingNoteByHash(hash string) (int, error) {
 	return 0, nil
 }
 
-func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
-	if err := s.ensureModelExists(); err != nil {
-		return fmt.Errorf("failed to ensure model exists: %w", err)
-	}
+func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair, report *ProcessingReport) error {
+	report.TotalProcessed++
 
 	s.logger.Debug("Processing new flashcard for deck: %s", deckName)
 	s.logger.Debug("Question image: %s", pair.Question)
 	s.logger.Debug("Answer image: %s", pair.Answer)
-
-	contentHash, err := FlashcardHash(pair.Question, pair.Answer)
-	if err != nil {
-		return fmt.Errorf("failed to generate content hash: %w", err)
-	}
-	s.logger.Debug("Generated content hash: %s", contentHash)
+	s.logger.Debug("Using content hash: %s", pair.Hash)
 
 	// Check for existing note with same hash
-	existingNoteId, err := s.findExistingNoteByHash(contentHash)
+	existingNoteId, err := s.findExistingNoteByHash(pair.Hash)
 	if err != nil {
 		s.logger.Debug("Warning: failed to check for existing note: %v", err)
 	} else if existingNoteId != 0 {
-		s.logger.Info("Skipping duplicate flashcard with hash: %s", contentHash)
+		s.logger.Info("Skipping duplicate flashcard with hash: %s", pair.Hash)
+		report.SkippedCount++
+		report.SkippedCards = append(report.SkippedCards,
+			fmt.Sprintf("%s (Hash:%s)", deckName, pair.Hash))
 		return nil
 	}
 
@@ -241,7 +248,7 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		Fields: map[string]string{
 			"Front": fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Question)),
 			"Back":  fmt.Sprintf("<img src=\"%s\">", filepath.Base(pair.Answer)),
-			"Hash":  contentHash,
+			"Hash":  pair.Hash,
 		},
 		Options: map[string]interface{}{
 			"allowDuplicate": false,
@@ -262,15 +269,20 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair) error {
 		return fmt.Errorf("failed to add note: %w", err)
 	}
 
-	s.logger.Debug("Successfully added new flashcard with hash: %s", contentHash)
+	s.logger.Debug("Successfully added new flashcard with hash: %s", pair.Hash)
+	report.AddedCount++
 	return nil
 }
 
-func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error {
+func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair, report *ProcessingReport) error {
 	var successCount, failCount int
 
+	if err := s.ensureModelExists(); err != nil {
+		return fmt.Errorf("failed to ensure model exists: %w", err)
+	}
+
 	for _, pair := range pairs {
-		if err := s.AddFlashcard(deckName, pair); err != nil {
+		if err := s.AddFlashcard(deckName, pair, report); err != nil {
 			s.logger.Debug("Error adding flashcard: %v", err)
 			failCount++
 			continue
@@ -282,7 +294,7 @@ func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair) error
 		return fmt.Errorf("failed to add %d out of %d flashcards", failCount, len(pairs))
 	}
 
-	s.logger.Debug("Successfully added %d flashcards", successCount)
+	s.logger.Debug("Successfully processed %d flashcards", successCount)
 
 	return nil
 }
@@ -363,4 +375,25 @@ func (s *Service) sendRequest(req AnkiConnectRequest) (json.RawMessage, error) {
 
 func getDeckNameUnderscoreSeparatedForTag(deckName string) string {
 	return strings.ReplaceAll(strings.TrimSpace(deckName), " ", "_")
+}
+
+func (r *ProcessingReport) TimeTaken() time.Duration {
+	return r.EndTime.Sub(r.StartTime)
+}
+func (r *ProcessingReport) Print(logger *logger.Logger) {
+	fmt.Printf("\n\n\nProcessing Report:")
+	fmt.Printf("\n-------------------------------------------------------------\n")
+	fmt.Printf("\nTotal PDFs Processed: %d", r.ProcessedPDFs)
+	fmt.Printf("\nTotal Flashcards Found: %d", r.TotalFlashcards)
+	fmt.Printf("\nCards Added: %d", r.AddedCount)
+	fmt.Printf("\nCards Skipped (Duplicates): %d", r.SkippedCount)
+	fmt.Printf("\nTime Taken: %v", r.TimeTaken())
+
+	if r.SkippedCount > 0 {
+		fmt.Printf("\n\n\nSkipped Cards:")
+		fmt.Printf("\n-------------------------------------------------------------\n")
+		for _, card := range r.SkippedCards {
+			fmt.Printf("\n- %s", card)
+		}
+	}
 }

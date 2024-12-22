@@ -149,10 +149,10 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
 			}
 		})
 
@@ -201,10 +201,10 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
 			}
 		})
 
@@ -253,10 +253,10 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_page%d_question.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_page%d_answer.png", baseName, pageNum)))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
 			}
 		})
 	})

@@ -2,7 +2,9 @@ package pdf_test
 
 import (
 	"fmt"
+	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"image"
@@ -10,8 +12,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-
-	"github.com/kpauljoseph/notesankify/internal/pdf"
 )
 
 func splitterTestLogger() *logger.Logger {
@@ -29,6 +29,7 @@ func createTestImage(width, height int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	midPoint := height / 2
 
+	// Create distinct colors for question and answer sections
 	for y := 0; y < midPoint; y++ {
 		for x := 0; x < width; x++ {
 			img.Set(x, y, color.RGBA{255, 0, 0, 255})
@@ -88,12 +89,17 @@ var _ = Describe("Flashcard Splitter", func() {
 	})
 
 	Context("when splitting a single image", func() {
-		var testImagePath string
+		var (
+			testImagePath string
+			baseName      string
+			fullHash      string
+		)
 
 		BeforeEach(func() {
 			testLogger.Debug("Creating test image")
 			img := createTestImage(200, 400)
-			testImagePath = filepath.Join(sourceDir, "test_page1.png")
+			baseName = "test_page1"
+			testImagePath = filepath.Join(sourceDir, baseName+".png")
 
 			f, err := os.Create(testImagePath)
 			Expect(err).NotTo(HaveOccurred())
@@ -102,11 +108,14 @@ var _ = Describe("Flashcard Splitter", func() {
 			err = png.Encode(f, img)
 			Expect(err).NotTo(HaveOccurred())
 			testLogger.Debug("Created test image at: %s", testImagePath)
+
+			fullHash, err = utils.GenerateImageHash(img)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should split the image into question and answer parts", func() {
 			testLogger.Debug("Testing image splitting")
-			pair, err := splitter.SplitImage(testImagePath)
+			pair, err := splitter.SplitImageWithHash(testImagePath, baseName, fullHash)
 			Expect(err).NotTo(HaveOccurred())
 
 			testLogger.Debug("Checking split results")
@@ -116,8 +125,12 @@ var _ = Describe("Flashcard Splitter", func() {
 			Expect(pair.Question).To(BeAnExistingFile())
 			Expect(pair.Answer).To(BeAnExistingFile())
 
-			Expect(filepath.Base(pair.Question)).To(Equal("test_page1_question.png"))
-			Expect(filepath.Base(pair.Answer)).To(Equal("test_page1_answer.png"))
+			expectedQuestionName := fmt.Sprintf("%s_%s_question.png", baseName, fullHash[:8])
+			expectedAnswerName := fmt.Sprintf("%s_%s_answer.png", baseName, fullHash[:8])
+
+			Expect(filepath.Base(pair.Question)).To(Equal(expectedQuestionName))
+			Expect(filepath.Base(pair.Answer)).To(Equal(expectedAnswerName))
+			Expect(pair.Hash).To(Equal(fullHash))
 
 			questionImg := readImage(pair.Question)
 			answerImg := readImage(pair.Answer)
@@ -127,47 +140,6 @@ var _ = Describe("Flashcard Splitter", func() {
 			Expect(questionImg.Bounds().Dy()).To(Equal(200))
 			Expect(answerImg.Bounds().Dx()).To(Equal(200))
 			Expect(answerImg.Bounds().Dy()).To(Equal(200))
-		})
-	})
-
-	Context("when processing a directory", func() {
-		BeforeEach(func() {
-			testLogger.Debug("Creating multiple test images")
-			for i := 1; i <= 3; i++ {
-				img := createTestImage(200, 400)
-				path := filepath.Join(sourceDir, fmt.Sprintf("test_page%d.png", i))
-
-				f, err := os.Create(path)
-				Expect(err).NotTo(HaveOccurred())
-
-				err = png.Encode(f, img)
-				Expect(err).NotTo(HaveOccurred())
-				f.Close()
-				testLogger.Debug("Created test image %d at: %s", i, path)
-			}
-
-			err := os.WriteFile(filepath.Join(sourceDir, "test.txt"), []byte("test"), 0644)
-			Expect(err).NotTo(HaveOccurred())
-			testLogger.Debug("Created test text file")
-		})
-
-		It("should process all PNG files in the directory", func() {
-			testLogger.Debug("Testing directory processing")
-			pairs, err := splitter.SplitAll(sourceDir)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pairs).To(HaveLen(3))
-
-			for i, pair := range pairs {
-				pageNum := i + 1
-				testLogger.Debug("Checking pair %d", pageNum)
-				testLogger.Debug("Question file: %s", pair.Question)
-				testLogger.Debug("Answer file: %s", pair.Answer)
-
-				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("test_page%d_question.png", pageNum)))
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("test_page%d_answer.png", pageNum)))
-			}
 		})
 	})
 })

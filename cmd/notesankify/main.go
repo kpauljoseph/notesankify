@@ -11,6 +11,7 @@ import (
 	"github.com/kpauljoseph/notesankify/pkg/models"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func main() {
@@ -21,6 +22,10 @@ func main() {
 	verbose := flag.Bool("verbose", false, "enable verbose logging")
 	debug := flag.Bool("debug", false, "enable debug mode with trace logging")
 	flag.Parse()
+
+	report := &anki.ProcessingReport{
+		StartTime: time.Now(),
+	}
 
 	logOptions := []logger.Option{
 		logger.WithPrefix("[notesankify] "),
@@ -104,8 +109,8 @@ func main() {
 	}
 	log.Info("Successfully connected to Anki")
 
-	var totalFlashcards int
 	for _, pdf := range pdfs {
+		report.ProcessedPDFs++
 		stats, err := processor.ProcessPDF(context.Background(), pdf.AbsolutePath)
 		if err != nil {
 			log.Info("Error processing %s: %v", pdf.RelativePath, err)
@@ -115,7 +120,7 @@ func main() {
 		if stats.FlashcardCount > 0 {
 			deckName := anki.GetDeckNameFromPath(*rootDeckName, pdf.RelativePath)
 			log.Info("Found %d flashcards in %s", stats.FlashcardCount, pdf.RelativePath)
-			totalFlashcards += stats.FlashcardCount
+			report.TotalFlashcards += stats.FlashcardCount
 
 			if err := ankiService.CreateDeck(deckName); err != nil {
 				log.Info("Error creating deck %s: %v", deckName, err)
@@ -123,7 +128,7 @@ func main() {
 			}
 			log.Debug("Created/Updated deck: %s", deckName)
 
-			if err := ankiService.AddAllFlashcards(deckName, stats.ImagePairs); err != nil {
+			if err := ankiService.AddAllFlashcards(deckName, stats.ImagePairs, report); err != nil {
 				log.Info("Error adding flashcards to deck %s: %v", deckName, err)
 				continue
 			}
@@ -132,6 +137,9 @@ func main() {
 
 	log.Info("Processing complete:")
 	log.Info("- Total PDFs processed: %d", len(pdfs))
-	log.Info("- Total flashcards found: %d", totalFlashcards)
+	log.Info("- Total flashcards found: %d", report.TotalFlashcards)
 	log.Info("- Flashcards saved to: %s", *outputDir)
+
+	report.EndTime = time.Now()
+	report.Print(log)
 }

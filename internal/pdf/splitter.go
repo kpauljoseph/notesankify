@@ -7,12 +7,12 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type ImagePair struct {
 	Question string
 	Answer   string
+	Hash     string
 }
 
 type Splitter struct {
@@ -31,8 +31,8 @@ func NewSplitter(outputDir string, logger *logger.Logger) (*Splitter, error) {
 	}, nil
 }
 
-func (s *Splitter) SplitImage(imagePath string) (*ImagePair, error) {
-	s.logger.Printf("Splitting image: %s", imagePath)
+func (s *Splitter) SplitImageWithHash(imagePath, baseName, fullHash string) (*ImagePair, error) {
+	s.logger.Debug("Splitting image: %s", imagePath)
 
 	srcFile, err := os.Open(imagePath)
 	if err != nil {
@@ -50,9 +50,8 @@ func (s *Splitter) SplitImage(imagePath string) (*ImagePair, error) {
 	height := bounds.Dy()
 	midPoint := height / 2
 
-	baseFileName := strings.TrimSuffix(filepath.Base(imagePath), filepath.Ext(imagePath))
-	questionPath := filepath.Join(s.outputDir, baseFileName+"_question.png")
-	answerPath := filepath.Join(s.outputDir, baseFileName+"_answer.png")
+	questionPath := filepath.Join(s.outputDir, fmt.Sprintf("%s_%s_question.png", baseName, fullHash[:8]))
+	answerPath := filepath.Join(s.outputDir, fmt.Sprintf("%s_%s_answer.png", baseName, fullHash[:8]))
 
 	questionImg := image.NewRGBA(image.Rect(0, 0, width, midPoint))
 	for y := 0; y < midPoint; y++ {
@@ -82,33 +81,8 @@ func (s *Splitter) SplitImage(imagePath string) (*ImagePair, error) {
 	return &ImagePair{
 		Question: questionPath,
 		Answer:   answerPath,
+		Hash:     fullHash,
 	}, nil
-}
-
-func (s *Splitter) SplitAll(sourceDir string) ([]ImagePair, error) {
-	var pairs []ImagePair
-
-	entries, err := os.ReadDir(sourceDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-			continue
-		}
-
-		imagePath := filepath.Join(sourceDir, entry.Name())
-		pair, err := s.SplitImage(imagePath)
-		if err != nil {
-			s.logger.Printf("Error splitting %s: %v", imagePath, err)
-			continue
-		}
-
-		pairs = append(pairs, *pair)
-	}
-
-	return pairs, nil
 }
 
 func (s *Splitter) saveImage(img *image.RGBA, path string) error {

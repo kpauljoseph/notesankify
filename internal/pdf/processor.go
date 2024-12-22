@@ -71,6 +71,8 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 	}
 	defer doc.Close()
 
+	baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
+
 	// Page numbers are zero indexed in the fitz package.
 	// pageIndex -> index, and pageNum -> actual page number in pdf file
 	for pageIndex := 0; pageIndex < doc.NumPage(); pageIndex++ {
@@ -95,7 +97,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			if isStandardSize {
 				text, err := doc.Text(pageIndex)
 				if err != nil {
-					p.logger.Printf("Warning: couldn't extract text from page %d: %v", pageNum, err)
+					p.logger.Debug("Warning: couldn't extract text from page %d: %v", pageNum, err)
 					continue
 				}
 
@@ -103,31 +105,36 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			}
 
 			if isFlashcard {
-				p.logger.Printf("Found flashcard page: %d", pageNum)
+				p.logger.Debug("Found flashcard page: %d", pageNum)
 
 				img, err := doc.Image(pageIndex)
 				if err != nil {
 					return stats, fmt.Errorf("failed to extract image for page %d: %w", pageNum, err)
 				}
 
-				// Save full image to temp directory first
-				tempImagePath := filepath.Join(p.tempDir, fmt.Sprintf("%s_page%d.png",
-					strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath)),
-					pageNum))
+				// Generate content hash from the entire image first
+				fullHash, err := utils.GenerateImageHash(img)
+				if err != nil {
+					return stats, fmt.Errorf("failed to generate hash for page %d: %w", pageNum, err)
+				}
+
+				tempImagePath := filepath.Join(p.tempDir, fmt.Sprintf("%s_%s.png",
+					baseName,
+					fullHash[:8]))
 
 				if err := saveImage(img, tempImagePath); err != nil {
 					return stats, fmt.Errorf("failed to save temp image for page %d: %w", pageNum, err)
 				}
 
 				// Split the image into question and answer
-				pair, err := p.splitter.SplitImage(tempImagePath)
+				pair, err := p.splitter.SplitImageWithHash(tempImagePath, baseName, fullHash)
 				if err != nil {
 					return stats, fmt.Errorf("failed to split image for page %d: %w", pageNum, err)
 				}
 
 				stats.ImagePairs = append(stats.ImagePairs, *pair)
 				stats.FlashcardCount++
-				p.logger.Debug("Split flashcard page %d into question and answer", pageNum)
+				p.logger.Debug("Split flashcard page %d into question and answer (Hash:%s)", pageNum, fullHash)
 			}
 		}
 	}
