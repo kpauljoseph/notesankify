@@ -15,13 +15,6 @@ import (
 	"github.com/kpauljoseph/notesankify/pkg/models"
 )
 
-const (
-	DimensionTolerance = 1.0
-
-	QuestionKeyword = "QUESTION"
-	AnswerKeyword   = "ANSWER"
-)
-
 type ProcessingStats struct {
 	PDFPath        string
 	FlashcardCount int
@@ -90,7 +83,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			width := float64(bounds.Dx())
 			height := float64(bounds.Dy())
 
-			p.logger.Debug("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
+			p.logger.Debug("Page %d dimensions: %.3f x %.3f", pageNum, width, height)
 
 			isStandardSize := MatchesGoodnotesDimensions(width, height)
 
@@ -145,17 +138,17 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 }
 
 func MatchesGoodnotesDimensions(width, height float64) bool {
-	widthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= DimensionTolerance
-	heightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= DimensionTolerance
+	widthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= utils.DIMENSION_TOLERANCE
+	heightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= utils.DIMENSION_TOLERANCE
 
-	rotatedWidthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= DimensionTolerance
-	rotatedHeightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= DimensionTolerance
+	rotatedWidthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= utils.DIMENSION_TOLERANCE
+	rotatedHeightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= utils.DIMENSION_TOLERANCE
 
 	return (widthMatch && heightMatch) || (rotatedWidthMatch && rotatedHeightMatch)
 }
 
 func ContainsFlashcardMarkers(text string) bool {
-	return strings.Contains(text, QuestionKeyword) && strings.Contains(text, AnswerKeyword)
+	return strings.Contains(text, utils.QuestionKeyword) && strings.Contains(text, utils.AnswerKeyword)
 }
 
 func abs(x float64) float64 {
