@@ -26,6 +26,7 @@ type ProcessingStats struct {
 	PDFPath        string
 	FlashcardCount int
 	ImagePairs     []ImagePair
+	PageNumbers    []int
 }
 
 type Processor struct {
@@ -133,6 +134,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 				}
 
 				stats.ImagePairs = append(stats.ImagePairs, *pair)
+				stats.PageNumbers = append(stats.PageNumbers, pageNum) // Store actual page number
 				stats.FlashcardCount++
 				p.logger.Debug("Split flashcard page %d into question and answer (Hash:%s)", pageNum, fullHash)
 			}

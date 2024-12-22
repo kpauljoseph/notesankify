@@ -125,16 +125,25 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			currentHashes := make(map[string]PageHash)
 			for i, pair := range stats.ImagePairs {
-				pageNum := fmt.Sprintf("%d", i+1)
+				pageNum := fmt.Sprintf("%d", stats.PageNumbers[i])
 				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+				testLogger.Debug("Processed page %s with hash %s", pageNum, pair.Hash)
 			}
 
 			if hashStore.IsUpdateMode() {
 				hashStore.UpdateFileHashes(filename, currentHashes)
-				testLogger.Info("Updated hashes for %s", filename)
+				testLogger.Info("Updated hashes for %s with pages: %v",
+					filename,
+					GetPageNumbers(currentHashes))
 			} else {
 				expectedHashes, exists := hashStore.GetFileHashes(filename)
 				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				expectedPages := GetPageNumbers(expectedHashes.Pages)
+				actualPages := GetPageNumbers(currentHashes)
+				testLogger.Debug("Comparing pages - Expected: %v, Got: %v", expectedPages, actualPages)
+				Expect(actualPages).To(Equal(expectedPages),
+					"Processed page numbers don't match expected")
 
 				for pageNum, currentHash := range currentHashes {
 					expected, ok := expectedHashes.Pages[pageNum]
@@ -153,16 +162,16 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			// page indexes - 0,1,2,3,4
 			// page numbers - 1,2,3,4,5
 			// expectedPages is zero-based for internal use
-			expectedPages := []int{0, 1, 2, 3, 4}
-			testLogger.Debug("Expected page indices to process: %v", expectedPages)
+			expectedPageIndices := []int{0, 1, 2, 3, 4}
+			testLogger.Debug("Expected page indices to process: %v", expectedPageIndices)
 
 			By("Verifying all pages were processed")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
-			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageIndices)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPageIndices)))
 
 			// Debug extracted files
 			for i, pair := range stats.ImagePairs {
-				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
+				pageNum := stats.PageNumbers[i]
 				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
 				testLogger.Debug("Question: %s", pair.Question)
 				testLogger.Debug("Answer: %s", pair.Answer)
@@ -204,16 +213,25 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			currentHashes := make(map[string]PageHash)
 			for i, pair := range stats.ImagePairs {
-				pageNum := fmt.Sprintf("%d", i+1)
+				pageNum := fmt.Sprintf("%d", stats.PageNumbers[i])
 				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+				testLogger.Debug("Processed page %s with hash %s", pageNum, pair.Hash)
 			}
 
 			if hashStore.IsUpdateMode() {
 				hashStore.UpdateFileHashes(filename, currentHashes)
-				testLogger.Info("Updated hashes for %s", filename)
+				testLogger.Info("Updated hashes for %s with pages: %v",
+					filename,
+					GetPageNumbers(currentHashes))
 			} else {
 				expectedHashes, exists := hashStore.GetFileHashes(filename)
 				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				expectedPages := GetPageNumbers(expectedHashes.Pages)
+				actualPages := GetPageNumbers(currentHashes)
+				testLogger.Debug("Comparing pages - Expected: %v, Got: %v", expectedPages, actualPages)
+				Expect(actualPages).To(Equal(expectedPages),
+					"Processed page numbers don't match expected")
 
 				for pageNum, currentHash := range currentHashes {
 					expected, ok := expectedHashes.Pages[pageNum]
@@ -229,19 +247,19 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			defer doc.Close()
 
 			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in the following:
-			// page indexes - 1, 2, 4, 5, 7
+			// page indices - 1, 2, 4, 5, 7
 			// page numbers - 2, 3, 5, 6, 8
 			// expectedPages is zero-based for internal use
-			expectedPages := []int{1, 2, 4, 5, 7}
-			testLogger.Debug("Expected page indices to process: %v", expectedPages)
+			expectedPageIndices := []int{1, 2, 4, 5, 7}
+			testLogger.Debug("Expected page indices to process: %v", expectedPageIndices)
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
-			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageIndices)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPageIndices)))
 
 			// Debug and verify extracted files
 			for i, pair := range stats.ImagePairs {
-				pageNum := expectedPages[i] + 1 // Convert to 1-based for display
+				pageNum := stats.PageNumbers[i]
 				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
 				testLogger.Debug("Question: %s", pair.Question)
 				testLogger.Debug("Answer: %s", pair.Answer)
@@ -283,16 +301,25 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 			currentHashes := make(map[string]PageHash)
 			for i, pair := range stats.ImagePairs {
-				pageNum := fmt.Sprintf("%d", i+1)
+				pageNum := fmt.Sprintf("%d", stats.PageNumbers[i])
 				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+				testLogger.Debug("Processed page %s with hash %s", pageNum, pair.Hash)
 			}
 
 			if hashStore.IsUpdateMode() {
 				hashStore.UpdateFileHashes(filename, currentHashes)
-				testLogger.Info("Updated hashes for %s", filename)
+				testLogger.Info("Updated hashes for %s with pages: %v",
+					filename,
+					GetPageNumbers(currentHashes))
 			} else {
 				expectedHashes, exists := hashStore.GetFileHashes(filename)
 				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				expectedPages := GetPageNumbers(expectedHashes.Pages)
+				actualPages := GetPageNumbers(currentHashes)
+				testLogger.Debug("Comparing pages - Expected: %v, Got: %v", expectedPages, actualPages)
+				Expect(actualPages).To(Equal(expectedPages),
+					"Processed page numbers don't match expected")
 
 				for pageNum, currentHash := range currentHashes {
 					expected, ok := expectedHashes.Pages[pageNum]
@@ -311,16 +338,16 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			// page indexes - 1, 2, 4, 5, 7
 			// page numbers - 2, 3, 5, 6, 8
 			// expectedPages is zero-based for internal use
-			expectedPages := []int{1, 2, 4, 5, 7}
-			testLogger.Debug("Expected page indices to process: %v", expectedPages)
+			expectedPageIndices := []int{1, 2, 4, 5, 7}
+			testLogger.Debug("Expected page indices to process: %v", expectedPageIndices)
 
 			By("Extracting only standard sized flashcard pages with Question/Answer markers")
-			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
-			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
+			Expect(stats.FlashcardCount).To(Equal(len(expectedPageIndices)))
+			Expect(stats.ImagePairs).To(HaveLen(len(expectedPageIndices)))
 
 			// Debug and verify extracted files
 			for i, pair := range stats.ImagePairs {
-				pageNum := expectedPages[i] + 1
+				pageNum := stats.PageNumbers[i]
 				testLogger.Debug("\n=== Processing Flashcard %d ===", pageNum)
 				testLogger.Debug("Question: %s", pair.Question)
 				testLogger.Debug("Answer: %s", pair.Answer)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 type TestFileHashes struct {
@@ -67,6 +68,11 @@ func (s *HashStore) Save() error {
 		hashList = append(hashList, h)
 	}
 
+	// Sort the list for consistent output
+	sort.Slice(hashList, func(i, j int) bool {
+		return hashList[i].Filename < hashList[j].Filename
+	})
+
 	data, err := json.MarshalIndent(hashList, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal hashes: %w", err)
@@ -97,4 +103,13 @@ func (s *HashStore) GetFileHashes(filename string) (TestFileHashes, bool) {
 
 func (s *HashStore) IsUpdateMode() bool {
 	return s.updateHashes
+}
+
+func GetPageNumbers(pages map[string]PageHash) []string {
+	numbers := make([]string, 0, len(pages))
+	for num := range pages {
+		numbers = append(numbers, num)
+	}
+	sort.Strings(numbers)
+	return numbers
 }
