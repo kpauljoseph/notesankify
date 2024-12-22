@@ -3,19 +3,19 @@
     "filename": "mixed_content_largeNormalPage_smallFlashcardPage.pdf",
     "pages": {
       "2": {
-        "hash": "ee5be8ecdc5d6a47b97df5c1ffdfd7c1d14a867a09b6361accc164c779d2d6f1"
+        "hash": "0feb66cde09c6abca311093375cf406cae9d09d3bd24cb58b21a9bec262504fa"
       },
       "3": {
-        "hash": "485b053baf009505f4f6e14e4157fe31f221c10d64183f22e66b862f6c414504"
+        "hash": "cd802a7bd33e92dbf782b3f340089dff5454400eddf54d3ad2e86d66c0495fcb"
       },
       "5": {
-        "hash": "ece42d54aae359d942cfe8de8ba1747bd5c0ef9eddbdecdba7a25d423d946096"
+        "hash": "2a470eda0f23acc6077867a4a710957557d7a307073fbf0c9acbcba2a5f2c2c5"
       },
       "6": {
-        "hash": "50e0a908d79b6e48cb7285cac0be9a19b635eb8b8680daf58d923e053f7ff2d1"
+        "hash": "70e9cdd2d88506173cf9a746d3ffc42a12b1923556680d3839f955a70ebf46f8"
       },
       "8": {
-        "hash": "4cf7b1158ca26835f5f4c4d0012ebcc5d45ce5a8a7dfd3c2d8c6a317fd1035e0"
+        "hash": "3e6f112d54d71c7b6bd4e87c055a2b82a4cb12272f1310c94fd6712a798bab4c"
       }
     }
   },
@@ -23,19 +23,19 @@
     "filename": "mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf",
     "pages": {
       "2": {
-        "hash": "2083f6f4d195d1f2ca353c29a1775c0fb2af3c5b870f2de61f0b11fde6fa292f"
+        "hash": "65bc3c219a60356f01dd77dc6afdba9c92146887c860d0dd4fe514d914bd4dcc"
       },
       "3": {
-        "hash": "f1b85a7861645372ec04d8c47f7ee11aa83b41b0267f89ef5085315e7b2f4f2a"
+        "hash": "633f05bba243feaf3bd4a894ba54acf93fe36743faa5106dedb3e2b4e59a3480"
       },
       "5": {
-        "hash": "50b389f23fc018c66846802caeebc4feb51900669e883d38158cf1143832a472"
+        "hash": "e0a59204785cc771d17a56e7e128922911c8c9816a66220d49bfe98c17b22f93"
       },
       "6": {
-        "hash": "52821b74524163a8b5f0aba80cd79cb9a16a398c5debd216b9a5ed478c79b4b2"
+        "hash": "3ce83f945ba487ccf95a4cec5a7d17d482199512c2672140e4be5bb955f58ad2"
       },
       "8": {
-        "hash": "a68e6b764dde2c4d19388331ea70c7c23df6f305c8107bdc28fd044995563979"
+        "hash": "c8828191c6ed4174120b6c4b6f3911f6e1c6b7b0b8f4c7bcacaa1c7743d8f56f"
       }
     }
   },
@@ -43,19 +43,19 @@
     "filename": "standard_flashcards.pdf",
     "pages": {
       "1": {
-        "hash": "ed3cd616018306b1bc2f046a2dc6527ed694deb6338eccecae75c48dff1696bb"
+        "hash": "addfe7db85d6d801332cc30c633fcef99910ae4c51d6edd1e4715afc26a6e3f3"
       },
       "2": {
-        "hash": "e017e879973088ba0ad9557f462b83220be4a2f5970709f7acb65dce643d1d38"
+        "hash": "85e67a7fb96333f9756f81b5c1cbe7d3d3381d9fe60b5cdb0b3d1431b9f4dd7a"
       },
       "3": {
-        "hash": "53e36492ef8633ffa963c8b577180c94822a5bc6957becae1cf9beb3ead61a79"
+        "hash": "17d9a8de8faa7552f3f71c1e09638dbedc12b2354f0735fae42b582b9e1617e6"
       },
       "4": {
-        "hash": "1cccafc9d572ef4f2646cda025f4f25c35e86584db4e21fa284ef0e082f1c35e"
+        "hash": "478350b0e2023216561c78e0f7561f8126cb13e29982aaed95a70faa9d321b6a"
       },
       "5": {
-        "hash": "64c9845178108b526e882b322dfa84243c21217ac8830e421548aad0d4c6e73d"
+        "hash": "1c61882f43cdeb4fece4b2b9662b97051b46c6bf01b6cf1ff55916f29ab481f7"
       }
     }
   }
