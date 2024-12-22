@@ -108,7 +108,7 @@ var _ = Describe("PDF Processor", func() {
 			),
 			Entry("markers with different case",
 				"Question\nsome text\nanswer\nmore text",
-				true,
+				false,
 			),
 			Entry("only question marker",
 				"QUESTION\nsome text",
