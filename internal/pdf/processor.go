@@ -155,7 +155,6 @@ func MatchesGoodnotesDimensions(width, height float64) bool {
 }
 
 func ContainsFlashcardMarkers(text string) bool {
-	text = strings.ToUpper(text)
 	return strings.Contains(text, QuestionKeyword) && strings.Contains(text, AnswerKeyword)
 }
 
