@@ -1,0 +1,62 @@
+[
+  {
+    "filename": "standard_flashcards.pdf",
+    "pages": {
+      "1": {
+        "hash": "ed3cd616018306b1bc2f046a2dc6527ed694deb6338eccecae75c48dff1696bb"
+      },
+      "2": {
+        "hash": "e017e879973088ba0ad9557f462b83220be4a2f5970709f7acb65dce643d1d38"
+      },
+      "3": {
+        "hash": "53e36492ef8633ffa963c8b577180c94822a5bc6957becae1cf9beb3ead61a79"
+      },
+      "4": {
+        "hash": "1cccafc9d572ef4f2646cda025f4f25c35e86584db4e21fa284ef0e082f1c35e"
+      },
+      "5": {
+        "hash": "64c9845178108b526e882b322dfa84243c21217ac8830e421548aad0d4c6e73d"
+      }
+    }
+  },
+  {
+    "filename": "mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf",
+    "pages": {
+      "1": {
+        "hash": "2083f6f4d195d1f2ca353c29a1775c0fb2af3c5b870f2de61f0b11fde6fa292f"
+      },
+      "2": {
+        "hash": "f1b85a7861645372ec04d8c47f7ee11aa83b41b0267f89ef5085315e7b2f4f2a"
+      },
+      "3": {
+        "hash": "50b389f23fc018c66846802caeebc4feb51900669e883d38158cf1143832a472"
+      },
+      "4": {
+        "hash": "52821b74524163a8b5f0aba80cd79cb9a16a398c5debd216b9a5ed478c79b4b2"
+      },
+      "5": {
+        "hash": "a68e6b764dde2c4d19388331ea70c7c23df6f305c8107bdc28fd044995563979"
+      }
+    }
+  },
+  {
+    "filename": "mixed_content_largeNormalPage_smallFlashcardPage.pdf",
+    "pages": {
+      "1": {
+        "hash": "ee5be8ecdc5d6a47b97df5c1ffdfd7c1d14a867a09b6361accc164c779d2d6f1"
+      },
+      "2": {
+        "hash": "485b053baf009505f4f6e14e4157fe31f221c10d64183f22e66b862f6c414504"
+      },
+      "3": {
+        "hash": "ece42d54aae359d942cfe8de8ba1747bd5c0ef9eddbdecdba7a25d423d946096"
+      },
+      "4": {
+        "hash": "50e0a908d79b6e48cb7285cac0be9a19b635eb8b8680daf58d923e053f7ff2d1"
+      },
+      "5": {
+        "hash": "4cf7b1158ca26835f5f4c4d0012ebcc5d45ce5a8a7dfd3c2d8c6a317fd1035e0"
+      }
+    }
+  }
+]

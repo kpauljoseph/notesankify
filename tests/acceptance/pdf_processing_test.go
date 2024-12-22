@@ -6,6 +6,7 @@ import (
 	"github.com/gen2brain/go-fitz"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
+	. "github.com/kpauljoseph/notesankify/tests/acceptance"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -47,12 +48,16 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		ctx         context.Context
 		testDataDir string
 		testLogger  *logger.Logger
+		hashStore   *HashStore
 	)
 
 	BeforeAll(func() {
 		testLogger = acceptanceTestLogger()
 		testDataDir = getTestDataPath()
 		testLogger.Info("Using test data directory: %s", testDataDir)
+
+		hashStore = NewHashStore(testDataDir)
+		Expect(hashStore.Load()).To(Succeed())
 
 		files := []string{
 			"standard_flashcards.pdf",
@@ -103,24 +108,53 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	AfterAll(func() {
+		// Save updated hashes if in update mode
+		Expect(hashStore.Save()).To(Succeed())
+	})
+
 	Context("Standard Flashcard Processing", Label("happy-path"), func() {
 		It("should process standard flashcard PDF correctly", func() {
-			pdfPath := filepath.Join(testDataDir, "standard_flashcards.pdf")
-			testLogger.Info("Testing standard flashcard processing: %s", filepath.Base(pdfPath))
-
 			By("Processing a PDF with only standard flashcard pages")
+			pdfPath := filepath.Join(testDataDir, "standard_flashcards.pdf")
+			filename := filepath.Base(pdfPath)
+			testLogger.Info("Testing standard flashcard processing: %s", filename)
+
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
+
+			currentHashes := make(map[string]PageHash)
+			for i, pair := range stats.ImagePairs {
+				pageNum := fmt.Sprintf("%d", i+1)
+				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+			}
+
+			if hashStore.IsUpdateMode() {
+				hashStore.UpdateFileHashes(filename, currentHashes)
+				testLogger.Info("Updated hashes for %s", filename)
+			} else {
+				expectedHashes, exists := hashStore.GetFileHashes(filename)
+				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				for pageNum, currentHash := range currentHashes {
+					expected, ok := expectedHashes.Pages[pageNum]
+					Expect(ok).To(BeTrue(), "No expected hash for page %s", pageNum)
+					Expect(currentHash.Hash).To(Equal(expected.Hash),
+						"Hash mismatch for page %s", pageNum)
+				}
+			}
 
 			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
-			// standard_flashcards.pdf file contains flash cards in all the 5 pages.
+			// standard_flashcards.pdf file contains flash cards in the following:
+			// page indexes - 0,1,2,3,4
+			// page numbers - 1,2,3,4,5
 			// expectedPages is zero-based for internal use
 			expectedPages := []int{0, 1, 2, 3, 4}
-			testLogger.Debug("Expected pages to process: %v", expectedPages)
+			testLogger.Debug("Expected page indices to process: %v", expectedPages)
 
 			By("Verifying all pages were processed")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
@@ -146,33 +180,60 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 				// Verify files exist and follow naming convention
 				By(fmt.Sprintf("Checking page %d files", pageNum))
-				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
+				baseName := strings.TrimSuffix(filename, filepath.Ext(pdfPath))
+				shortHash := pair.Hash[:8]
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, shortHash)))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, shortHash)))
 			}
 		})
+	})
 
+	Context("Mixed PDF Processing - same sized pages", Label("happy-path"), func() {
 		It("should extract flashcards from mixed content PDF with same sized pages", func() {
 			By("Processing a PDF with mixed content but same page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf")
-			testLogger.Info("Testing mixed content processing (same size): %s", filepath.Base(pdfPath))
+			filename := filepath.Base(pdfPath)
+			testLogger.Info("Testing mixed content processing (same size): %s", filename)
 
-			By("Processing a PDF with mixed content but same page sizes")
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
+
+			currentHashes := make(map[string]PageHash)
+			for i, pair := range stats.ImagePairs {
+				pageNum := fmt.Sprintf("%d", i+1)
+				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+			}
+
+			if hashStore.IsUpdateMode() {
+				hashStore.UpdateFileHashes(filename, currentHashes)
+				testLogger.Info("Updated hashes for %s", filename)
+			} else {
+				expectedHashes, exists := hashStore.GetFileHashes(filename)
+				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				for pageNum, currentHash := range currentHashes {
+					expected, ok := expectedHashes.Pages[pageNum]
+					Expect(ok).To(BeTrue(), "No expected hash for page %s", pageNum)
+					Expect(currentHash.Hash).To(Equal(expected.Hash),
+						"Hash mismatch for page %s", pageNum)
+				}
+			}
 
 			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
-			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
+			// mixed_content_sameSizeNormalPage_sameSizeFlashcardPage.pdf file contains flash cards in the following:
+			// page indexes - 1, 2, 4, 5, 7
+			// page numbers - 2, 3, 5, 6, 8
+			// expectedPages is zero-based for internal use
 			expectedPages := []int{1, 2, 4, 5, 7}
-			testLogger.Debug("Expected pages to process: %v", expectedPages)
+			testLogger.Debug("Expected page indices to process: %v", expectedPages)
 
 			By("Only extracting pages with QUESTION/ANSWER markers")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
@@ -198,35 +259,62 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 				// Verify files exist and follow naming convention
 				By(fmt.Sprintf("Checking page %d files", pageNum))
-				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
+				baseName := strings.TrimSuffix(filename, filepath.Ext(pdfPath))
+				shortHash := pair.Hash[:8]
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, shortHash)))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, shortHash)))
 			}
 		})
+	})
 
+	Context("Mixed PDF Processing - different sized pages", Label("happy-path"), func() {
 		It("should extract flashcards from mixed content PDF with different sized pages", func() {
 			By("Processing a PDF with mixed content and different page sizes")
 			pdfPath := filepath.Join(testDataDir, "mixed_content_largeNormalPage_smallFlashcardPage.pdf")
-			testLogger.Info("Testing mixed content processing (different sizes): %s", filepath.Base(pdfPath))
+			filename := filepath.Base(pdfPath)
+			testLogger.Info("Testing mixed content processing (different sizes): %s", filename)
 
-			By("Processing a PDF with mixed content and different page sizes")
 			stats, err := processor.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
+
+			currentHashes := make(map[string]PageHash)
+			for i, pair := range stats.ImagePairs {
+				pageNum := fmt.Sprintf("%d", i+1)
+				currentHashes[pageNum] = PageHash{Hash: pair.Hash}
+			}
+
+			if hashStore.IsUpdateMode() {
+				hashStore.UpdateFileHashes(filename, currentHashes)
+				testLogger.Info("Updated hashes for %s", filename)
+			} else {
+				expectedHashes, exists := hashStore.GetFileHashes(filename)
+				Expect(exists).To(BeTrue(), "No expected hashes found for %s", filename)
+
+				for pageNum, currentHash := range currentHashes {
+					expected, ok := expectedHashes.Pages[pageNum]
+					Expect(ok).To(BeTrue(), "No expected hash for page %s", pageNum)
+					Expect(currentHash.Hash).To(Equal(expected.Hash),
+						"Hash mismatch for page %s", pageNum)
+				}
+			}
 
 			// Debug page content
 			doc, err := fitz.New(pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 			defer doc.Close()
 
-			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in page indexes 1,2,4,5,7
+			// mixed_content_largeNormalPage_smallFlashcardPage.pdf file contains flash cards in the following:
+			// page indexes - 1, 2, 4, 5, 7
+			// page numbers - 2, 3, 5, 6, 8
+			// expectedPages is zero-based for internal use
 			expectedPages := []int{1, 2, 4, 5, 7}
-			testLogger.Debug("Expected pages to process: %v", expectedPages)
+			testLogger.Debug("Expected page indices to process: %v", expectedPages)
 
-			By("Extracting only Goodnotes standard sized pages with markers")
+			By("Extracting only standard sized flashcard pages with Question/Answer markers")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPages)))
 			Expect(stats.ImagePairs).To(HaveLen(len(expectedPages)))
 
@@ -250,13 +338,14 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 
 				// Verify files exist and follow naming convention
 				By(fmt.Sprintf("Checking page %d files", pageNum))
-				baseName := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
+				baseName := strings.TrimSuffix(filename, filepath.Ext(pdfPath))
+				shortHash := pair.Hash[:8]
 
 				Expect(pair.Question).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Question)).To(Equal(fmt.Sprintf("%s_%s_question.png", baseName, shortHash)))
 
 				Expect(pair.Answer).To(BeAnExistingFile())
-				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, pair.Hash[:8])))
+				Expect(filepath.Base(pair.Answer)).To(Equal(fmt.Sprintf("%s_%s_answer.png", baseName, shortHash)))
 			}
 		})
 	})
