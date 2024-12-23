@@ -28,6 +28,6 @@ func main() {
 	// Process each page's dimensions
 	for i, dim := range dims {
 		fmt.Printf("\nPage %d:\n", i+1)
-		fmt.Printf("Dimensions (Width x Height): %.3f x %.3f points\n", dim.Width, dim.Height)
+		fmt.Printf("Dimensions (Width x Height): %.2f x %.2f points\n", dim.Width, dim.Height)
 	}
 }

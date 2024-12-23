@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"gopkg.in/yaml.v3"
 	"os"
 )
@@ -41,6 +42,11 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Database.SSLMode == "" {
 		cfg.Database.SSLMode = "disable"
+	}
+
+	if cfg.FlashcardSize.Width == 0 || cfg.FlashcardSize.Height == 0 {
+		cfg.FlashcardSize.Width = utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH
+		cfg.FlashcardSize.Height = utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT
 	}
 
 	return &cfg, nil

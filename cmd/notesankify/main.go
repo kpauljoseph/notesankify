@@ -9,6 +9,7 @@ import (
 	"github.com/kpauljoseph/notesankify/internal/scanner"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/models"
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,6 +22,9 @@ func main() {
 	rootDeckName := flag.String("root-deck", "", "root deck name for organizing flashcards (optional)")
 	verbose := flag.Bool("verbose", false, "enable verbose logging")
 	debug := flag.Bool("debug", false, "enable debug mode with trace logging")
+	width := flag.Float64("width", 0.0, "custom flashcard width (defaults to Goodnotes standard if not specified)")
+	height := flag.Float64("height", 0.0, "custom flashcard height (defaults to Goodnotes standard if not specified)")
+
 	flag.Parse()
 
 	report := &anki.ProcessingReport{
@@ -60,6 +64,16 @@ func main() {
 
 	if *pdfDir != "" {
 		cfg.PDFSourceDir = *pdfDir
+	}
+
+	if *width > 0 && *height > 0 {
+		cfg.FlashcardSize.Width = *width
+		cfg.FlashcardSize.Height = *height
+		log.Debug("Using custom dimensions: %.2f x %.2f", *width, *height)
+	} else {
+		log.Debug("Using default Goodnotes dimensions: %.2f x %.2f",
+			utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+			utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT)
 	}
 
 	if _, err := os.Stat(cfg.PDFSourceDir); os.IsNotExist(err) {

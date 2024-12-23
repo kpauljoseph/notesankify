@@ -83,9 +83,9 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 			width := float64(bounds.Dx())
 			height := float64(bounds.Dy())
 
-			p.logger.Debug("Page %d dimensions: %.3f x %.3f", pageNum, width, height)
+			p.logger.Debug("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
-			isStandardSize := MatchesGoodnotesDimensions(width, height)
+			isStandardSize := p.matchesFlashcardDimensions(width, height)
 
 			isFlashcard := false
 			if isStandardSize {
@@ -137,14 +137,25 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 	return stats, nil
 }
 
-func MatchesGoodnotesDimensions(width, height float64) bool {
-	widthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= utils.DIMENSION_TOLERANCE
-	heightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= utils.DIMENSION_TOLERANCE
+func (p *Processor) matchesFlashcardDimensions(width, height float64) bool {
+	targetWidth := p.flashcardSize.Width
+	targetHeight := p.flashcardSize.Height
 
-	rotatedWidthMatch := abs(width-utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT) <= utils.DIMENSION_TOLERANCE
-	rotatedHeightMatch := abs(height-utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH) <= utils.DIMENSION_TOLERANCE
+	p.logger.Debug("Comparing dimensions:")
+	p.logger.Debug("  Current Page Dimension (WxH): %.2f x %.2f", width, height)
+	p.logger.Debug("  Target Flashcard Page Dimension (WxH): %.2f x %.2f", targetWidth, targetHeight)
+	p.logger.Debug("  Tolerance: %.1f", utils.DIMENSION_TOLERANCE)
 
-	return (widthMatch && heightMatch) || (rotatedWidthMatch && rotatedHeightMatch)
+	widthMatch := abs(width-targetWidth) <= utils.DIMENSION_TOLERANCE
+	heightMatch := abs(height-targetHeight) <= utils.DIMENSION_TOLERANCE
+
+	rotatedWidthMatch := abs(width-targetHeight) <= utils.DIMENSION_TOLERANCE
+	rotatedHeightMatch := abs(height-targetWidth) <= utils.DIMENSION_TOLERANCE
+
+	matches := (widthMatch && heightMatch) || (rotatedWidthMatch && rotatedHeightMatch)
+	p.logger.Debug("  Dimensions match: %v", matches)
+
+	return matches
 }
 
 func ContainsFlashcardMarkers(text string) bool {
