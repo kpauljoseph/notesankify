@@ -1,6 +1,7 @@
 .PHONY: build test clean lint check test-int test-all run deps
 
-BINARY_NAME=notesankify
+CLI_BINARY_NAME=notesankify
+GUI_BINARY_NAME=notesankify-gui
 BUILD_DIR=bin
 COVERAGE_FILE=coverage.out
 GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
@@ -10,7 +11,8 @@ GOBUILD=go build -v -ldflags="-s -w"
 
 build:
 	mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) cmd/notesankify/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
 test:
 	$(GINKGO) -r -v --trace --show-node-events --cover -coverprofile=$(COVERAGE_FILE) ./...
