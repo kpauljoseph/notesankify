@@ -88,17 +88,21 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		testLogger.Debug("- Temp dir: %s", tempDir)
 		testLogger.Debug("- Output dir: %s", outputDir)
 
-		processor, err = pdf.NewProcessor(
-			tempDir,
-			outputDir,
-			models.PageDimensions{
+		config := pdf.ProcessorConfig{
+			TempDir:   tempDir,
+			OutputDir: outputDir,
+			Dimensions: models.PageDimensions{
 				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 			},
-			false,
-			false,
-			testLogger,
-		)
+			ProcessingOptions: pdf.ProcessingOptions{
+				CheckDimensions: true,
+				CheckMarkers:    true,
+			},
+			Logger: testLogger,
+		}
+
+		processor, err = pdf.NewProcessor(config)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -386,20 +390,25 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			filename := filepath.Base(pdfPath)
 			testLogger.Info("Testing mixed content processing (same size): %s", filename)
 
-			processorWithSkipMarkers, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{
+			// Create processor with A4 dimensions and marker checking disabled
+			config := pdf.ProcessorConfig{
+				TempDir:   tempDir,
+				OutputDir: outputDir,
+				Dimensions: models.PageDimensions{
 					Width:  utils.A4_PAGE_WIDTH,
 					Height: utils.A4_PAGE_HEIGHT,
 				},
-				true,
-				false,
-				testLogger,
-			)
+				ProcessingOptions: pdf.ProcessingOptions{
+					CheckDimensions: true,
+					CheckMarkers:    false, // Don't check for QUESTION/ANSWER markers
+				},
+				Logger: testLogger,
+			}
+
+			processorWithoutMarkersCheck, err := pdf.NewProcessor(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			stats, err := processorWithSkipMarkers.ProcessPDF(ctx, pdfPath)
+			stats, err := processorWithoutMarkersCheck.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			currentHashes := make(map[string]PageHash)
@@ -444,7 +453,7 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 			expectedPageIndices := []int{0, 1, 2, 3, 4}
 			testLogger.Debug("Expected page indices to process: %v", expectedPageIndices)
 
-			By("Etracting all pages with top half question and bottom half answer")
+			By("Extracting all pages with top half question and bottom half answer")
 			Expect(stats.FlashcardCount).To(Equal(len(expectedPageIndices)))
 			Expect(stats.ImagePairs).To(HaveLen(len(expectedPageIndices)))
 
@@ -480,27 +489,32 @@ var _ = Describe("NotesAnkify End-to-End", Ordered, func() {
 		})
 	})
 
-	Context("Mixed Size PDF Processing - Skip Marker and Dimension check - all pages are top question + bottom answer format", Label("happy-path"), func() {
+	Context("Mixed Size PDF Processing - Process all pages as flashcards - No dimension or marker check", Label("happy-path"), func() {
 		It("should extract flashcards from all pdf pages with mixed dimensions", func() {
 			By("Processing a PDF with different page sizes but all pages have top half question bottom half answer")
 			pdfPath := filepath.Join(testDataDir, "mixedSize_allPages_topQuestionBottomAnswer.pdf")
 			filename := filepath.Base(pdfPath)
 			testLogger.Info("Testing mixed content processing (different size): %s", filename)
 
-			processorWithSkipMarkerAndDimensionCheck, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{
+			// Create processor with dimension and marker checking disabled
+			config := pdf.ProcessorConfig{
+				TempDir:   tempDir,
+				OutputDir: outputDir,
+				Dimensions: models.PageDimensions{
 					Width:  0,
 					Height: 0,
 				},
-				true,
-				true,
-				testLogger,
-			)
+				ProcessingOptions: pdf.ProcessingOptions{
+					CheckDimensions: false, // Process all page sizes
+					CheckMarkers:    false, // Don't check for markers
+				},
+				Logger: testLogger,
+			}
+
+			processorForAllPagesWithoutDimensionMarkerChecks, err := pdf.NewProcessor(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			stats, err := processorWithSkipMarkerAndDimensionCheck.ProcessPDF(ctx, pdfPath)
+			stats, err := processorForAllPagesWithoutDimensionMarkerChecks.ProcessPDF(ctx, pdfPath)
 			Expect(err).NotTo(HaveOccurred())
 
 			currentHashes := make(map[string]PageHash)

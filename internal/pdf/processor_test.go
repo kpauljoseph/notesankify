@@ -44,17 +44,21 @@ var _ = Describe("PDF Processor", func() {
 		testLogger.Debug("Temp directory: %s", tempDir)
 		testLogger.Debug("Output directory: %s", outputDir)
 
-		processor, err = pdf.NewProcessor(
-			tempDir,
-			outputDir,
-			models.PageDimensions{
+		config := pdf.ProcessorConfig{
+			TempDir:   tempDir,
+			OutputDir: outputDir,
+			Dimensions: models.PageDimensions{
 				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 			},
-			false, // skipMarkerCheck default to false
-			false, // skipDimensionCheck default to false
-			testLogger,
-		)
+			ProcessingOptions: pdf.ProcessingOptions{
+				CheckDimensions: true,
+				CheckMarkers:    true,
+			},
+			Logger: testLogger,
+		}
+
+		processor, err = pdf.NewProcessor(config)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -71,19 +75,22 @@ var _ = Describe("PDF Processor", func() {
 		DescribeTable("matchesFlashcardDimensions",
 			func(width, height float64, shouldMatch bool) {
 				testLogger.Trace("Testing dimensions: %.2f x %.2f", width, height)
-				processor, err := pdf.NewProcessor(
-					tempDir,
-					outputDir,
-					models.PageDimensions{
+				config := pdf.ProcessorConfig{
+					TempDir:   tempDir,
+					OutputDir: outputDir,
+					Dimensions: models.PageDimensions{
 						Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 						Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 					},
-					false,
-					false,
-					testLogger,
-				)
+					ProcessingOptions: pdf.ProcessingOptions{
+						CheckDimensions: true,
+						CheckMarkers:    true,
+					},
+					Logger: testLogger,
+				}
+				processor, err := pdf.NewProcessor(config)
 				Expect(err).NotTo(HaveOccurred())
-				result := processor.MatchesFlashcardDimensions(width, height)
+				result := processor.MatchesDimensions(width, height)
 				Expect(result).To(Equal(shouldMatch))
 			},
 			Entry("exact match",
@@ -144,17 +151,21 @@ var _ = Describe("PDF Processor", func() {
 			newOutputDir := filepath.Join(outputDir, "nested", "output")
 			testLogger.Debug("Testing nested output directory creation: %s", newOutputDir)
 
-			_, err := pdf.NewProcessor(
-				tempDir,
-				newOutputDir,
-				models.PageDimensions{
+			config := pdf.ProcessorConfig{
+				TempDir:   tempDir,
+				OutputDir: newOutputDir,
+				Dimensions: models.PageDimensions{
 					Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 					Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 				},
-				false,
-				false,
-				testLogger,
-			)
+				ProcessingOptions: pdf.ProcessingOptions{
+					CheckDimensions: true,
+					CheckMarkers:    true,
+				},
+				Logger: testLogger,
+			}
+
+			_, err := pdf.NewProcessor(config)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(newOutputDir).To(BeADirectory())
 			testLogger.Debug("Successfully created nested output directory")
@@ -171,59 +182,36 @@ var _ = Describe("PDF Processor", func() {
 		})
 	})
 
-	Context("Marker checking behavior", func() {
-		It("should respect marker checking flag", func() {
-			normalProcessor, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{Width: 455.04, Height: 587.52},
-				false,
-				false,
-				testLogger,
-			)
-			Expect(err).NotTo(HaveOccurred())
+	Context("Processing modes", func() {
+		DescribeTable("processing options",
+			func(checkDimensions, checkMarkers bool) {
+				testLogger.Debug("Testing with options - CheckDimensions: %v, CheckMarkers: %v",
+					checkDimensions, checkMarkers)
 
-			skipMarkersProcessor, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{Width: 455.04, Height: 587.52},
-				true,
-				false,
-				testLogger,
-			)
-			Expect(err).NotTo(HaveOccurred())
+				config := pdf.ProcessorConfig{
+					TempDir:   tempDir,
+					OutputDir: outputDir,
+					Dimensions: models.PageDimensions{
+						Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+						Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+					},
+					ProcessingOptions: pdf.ProcessingOptions{
+						CheckDimensions: checkDimensions,
+						CheckMarkers:    checkMarkers,
+					},
+					Logger: testLogger,
+				}
 
-			Expect(normalProcessor.ShouldCheckMarkers()).To(BeTrue())
+				processor, err := pdf.NewProcessor(config)
+				Expect(err).NotTo(HaveOccurred())
 
-			Expect(skipMarkersProcessor.ShouldCheckMarkers()).To(BeFalse())
-		})
-	})
-
-	Context("Dimension checking behavior", func() {
-		It("should respect dimension checking flag", func() {
-			normalProcessor, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{Width: 455.04, Height: 587.52},
-				false,
-				false,
-				testLogger,
-			)
-			Expect(err).NotTo(HaveOccurred())
-
-			skipDimensionsProcessor, err := pdf.NewProcessor(
-				tempDir,
-				outputDir,
-				models.PageDimensions{Width: 455.04, Height: 587.52},
-				false,
-				true,
-				testLogger,
-			)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(normalProcessor.ShouldCheckDimensions()).To(BeTrue())
-
-			Expect(skipDimensionsProcessor.ShouldCheckDimensions()).To(BeFalse())
-		})
+				Expect(processor.ShouldCheckDimensions()).To(Equal(checkDimensions))
+				Expect(processor.ShouldCheckMarkers()).To(Equal(checkMarkers))
+			},
+			Entry("check both", true, true),
+			Entry("check dimensions only", true, false),
+			Entry("check markers only", false, true),
+			Entry("check neither", false, false),
+		)
 	})
 })

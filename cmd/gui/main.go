@@ -3,7 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
+	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -13,18 +19,20 @@ import (
 	"sync"
 	"time"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/widget"
-
 	"github.com/kpauljoseph/notesankify/internal/anki"
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/internal/scanner"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/models"
-	"github.com/kpauljoseph/notesankify/pkg/utils"
+)
+
+type ProcessingMode int
+
+const (
+	ModeProcessAll ProcessingMode = iota
+	ModeOnlyMarkers
+	ModeOnlyDimensions
+	ModeBoth
 )
 
 type NotesAnkifyGUI struct {
@@ -37,49 +45,59 @@ type NotesAnkifyGUI struct {
 	mutex       sync.Mutex
 	logFileName string
 
+	// Processing settings
+	processingMode ProcessingMode
+	dimensions     models.PageDimensions
+
 	// UI components
-	dirEntry             *widget.Entry
-	rootDeckEntry        *widget.Entry
-	skipMarkersCheck     *widget.Check
-	skipDimensionsCheck  *widget.Check
-	checkMarkersCheck    *widget.Check
-	checkDimensionsCheck *widget.Check
-	verboseCheck         *widget.Check
-	widthEntry           *widget.Entry
-	heightEntry          *widget.Entry
-	dimensionsContainer  *fyne.Container
-	progress             *widget.ProgressBarInfinite
-	status               *widget.Label
+	dirEntry      *widget.Entry
+	rootDeckEntry *widget.Entry
+	modeSelect    *widget.Select
+	widthEntry    *widget.Entry
+	heightEntry   *widget.Entry
+	dimContainer  *fyne.Container
+	verboseCheck  *widget.Check
+	progress      *widget.ProgressBarInfinite
+	status        *widget.Label
 }
 
 func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 	log, logFileName, err := setupLogging()
 	if err != nil {
-		// If logging setup fails, fall back to basic logger
-		log = logger.New(
-			logger.WithPrefix("[notesankify-gui] "),
-		)
+		log = logger.New(logger.WithPrefix("[notesankify-gui] "))
 		fmt.Printf("Warning: Failed to set up logging: %v\n", err)
 	}
 
 	notesankifyApp := app.New()
 	window := notesankifyApp.NewWindow("NotesAnkify")
 
+	dimensions := models.PageDimensions{
+		Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+		Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+	}
+
 	return &NotesAnkifyGUI{
-		window:      window,
-		log:         log,
-		scanner:     scanner.New(log),
-		ankiService: anki.NewService(log),
-		logFileName: logFileName,
+		window:         window,
+		log:            log,
+		scanner:        scanner.New(log),
+		ankiService:    anki.NewService(log),
+		logFileName:    logFileName,
+		dimensions:     dimensions,
+		processingMode: ModeBoth, // Start with most strict mode
 	}
 }
 
 func (gui *NotesAnkifyGUI) resetDimensions() {
-	gui.widthEntry.SetText(fmt.Sprintf("%.2f", utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH))
-	gui.heightEntry.SetText(fmt.Sprintf("%.2f", utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT))
+	gui.dimensions = models.PageDimensions{
+		Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+		Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+	}
+	gui.widthEntry.SetText(fmt.Sprintf("%.2f", gui.dimensions.Width))
+	gui.heightEntry.SetText(fmt.Sprintf("%.2f", gui.dimensions.Height))
 }
 
 func (gui *NotesAnkifyGUI) setupUI() {
+	// Directory selection
 	gui.dirEntry = widget.NewEntry()
 	gui.dirEntry.SetPlaceHolder("Select PDF Directory")
 
@@ -91,128 +109,112 @@ func (gui *NotesAnkifyGUI) setupUI() {
 		gui.dirEntry,
 	)
 
-	// Settings
-	gui.checkMarkersCheck = widget.NewCheck("Check for QUESTION/ANSWER markers", func(checked bool) {
-		gui.skipMarkersCheck = &widget.Check{Checked: !checked}
-	})
-	gui.checkMarkersCheck.SetChecked(true)
+	// Root deck name
+	gui.rootDeckEntry = widget.NewEntry()
+	gui.rootDeckEntry.SetPlaceHolder("Root Deck Name")
+
+	// Processing mode selection
+	gui.modeSelect = widget.NewSelect(
+		[]string{
+			"Pages with Both QUESTION/ANSWER Markers and Matching Dimensions",
+			"Only Pages with QUESTION/ANSWER Markers",
+			"Only Pages Matching Dimensions",
+			"Process All Pages",
+		},
+		gui.handleModeChange,
+	)
+	gui.modeSelect.SetSelected("Pages with Both QUESTION/ANSWER Markers and Matching Dimensions") // Default mode
 
 	// Dimension controls
 	gui.widthEntry = widget.NewEntry()
 	gui.heightEntry = widget.NewEntry()
-	gui.resetDimensions()
+	gui.resetDimensions() // Set default dimensions
 
-	resetDimensionsBtn := widget.NewButton("Reset to Default", func() {
-		gui.resetDimensions()
-	})
+	resetDimensionsBtn := widget.NewButton("Reset to Default", gui.resetDimensions)
 
-	dimensionsForm := container.NewHBox(
-		container.NewGridWithColumns(4,
-			widget.NewLabel("Width:"),
-			gui.widthEntry,
-			widget.NewLabel("Height:"),
-			gui.heightEntry,
-		),
+	dimensionsForm := container.NewGridWithColumns(4,
+		widget.NewLabel("Width:"),
+		gui.widthEntry,
+		widget.NewLabel("Height:"),
+		gui.heightEntry,
+	)
+
+	gui.dimContainer = container.NewVBox(
+		dimensionsForm,
 		resetDimensionsBtn,
 	)
 
-	gui.checkDimensionsCheck = widget.NewCheck("Check page dimensions", func(checked bool) {
-		gui.skipDimensionsCheck = &widget.Check{Checked: !checked}
-		if checked {
-			gui.widthEntry.Enable()
-			gui.heightEntry.Enable()
-			resetDimensionsBtn.Enable()
-		} else {
-			gui.widthEntry.Disable()
-			gui.heightEntry.Disable()
-			resetDimensionsBtn.Disable()
-		}
-	})
-	gui.checkDimensionsCheck.SetChecked(true)
-
-	gui.dimensionsContainer = container.NewVBox(
-		gui.checkDimensionsCheck,
-		dimensionsForm,
-	)
-
+	// Additional settings
 	gui.verboseCheck = widget.NewCheck("Verbose Logging", func(checked bool) {
 		gui.log.SetVerbose(checked)
 	})
 
-	gui.rootDeckEntry = widget.NewEntry()
-	gui.rootDeckEntry.SetPlaceHolder("Root Deck Name")
-
+	// Progress indicator
 	gui.progress = widget.NewProgressBarInfinite()
 	gui.progress.Hide()
 	gui.status = widget.NewLabel("Ready to process files...")
 
+	// Process button
 	processBtn := widget.NewButton("Process and Send to Anki", gui.handleProcess)
 	processBtn.Importance = widget.HighImportance
 
+	// Create info sections
 	pdfSourceInfo := createInfoSection("PDF Source",
-		"Select the directory containing all your PDF files containing notes/flashcards from which you want to extract flashcards and send to Anki.",
+		"Select the directory containing your PDF files for processing into Anki flashcards.",
 		container.NewVBox(dirContainer))
 
-	markerInfo := createInfoSection("Marker Detection",
-		"When enabled, only extract flashcards from pages containing the term 'QUESTION' AND 'ANSWER'.\n"+
-			"Disable this if your flashcards don't use these keywords.\n"+
-			"The standard flashcard template contains these markers in top(QUESTION) and bottom(ANSWER) halves.\n"+
-			"If this option is disabled, then the tool will cut the page in half, and consider top half as question,\n"+
-			"and bottom half as the answer for a given page(according to appropriate dimension check).",
-		container.NewVBox(gui.checkMarkersCheck))
+	deckInfo := createInfoSection("Root Deck",
+		"Specify a root deck name to organize your flashcards.\n"+
+			"If not provided, folder names will be used for deck organization.\n"+
+			"Example: 'MyStudies' will create 'MyStudies::Math::Calculus'",
+		container.NewVBox(gui.rootDeckEntry))
 
-	deckInfo := createInfoSection("Deck Organization",
-		"Specify a root deck name to organize your flashcards. Default to folder name if nothing is provided.\n"+
-			"Example: 'MyStudyDeck' will create decks like 'MyStudyDeck::SubFolder::Topic'",
+	processingInfo := createInfoSection("Processing Mode",
+		"Choose how to identify flashcards in your PDF files:\n"+
+			"• Pages with Both: The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n"+
+			"• Only Markers: The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n"+
+			"• Only Dimensions: The Flashcard page must match specified dimensions\n"+
+			"• Process All: Split every PDF page into two halves top->question bottom->answer",
 		container.NewVBox(
-			widget.NewLabel("Root Deck Name:"),
-			gui.rootDeckEntry,
+			gui.modeSelect,
+			widget.NewLabel(""),
+			widget.NewLabel("Dimensions:"),
+			gui.dimContainer,
 		))
 
-	dimensionInfo := createInfoSection("Page Dimensions",
-		"When enabled, only extracts flashcard pages if the PDF file contains pages matching the specified dimensions.\n"+
-			"Default dimensions are set to standard flashcard size.\n"+
-			"Modify the this if your flashcards use different dimensions.\n"+
-			"When disabled, all files of varying dimensions will be considered for flashcard processing(based on marker check).\n"+
-			"This will work along with the QUESTION/ANSWER marker check if it is also enabled.",
-		gui.dimensionsContainer)
-
-	loggingInfo := createInfoSection("Logging",
-		"Enable detailed logging for troubleshooting.\nShows additional information about the processing steps.",
+	settingsInfo := createInfoSection("Additional Settings",
+		"Enable verbose logging to see detailed processing information.",
 		container.NewVBox(gui.verboseCheck))
 
-	mainContent := container.NewVBox(
+	content := container.NewVBox(
 		widget.NewLabelWithStyle("NotesAnkify", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 		pdfSourceInfo,
-		widget.NewLabel(""),
-		widget.NewLabelWithStyle("Settings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		deckInfo,
 		widget.NewLabel(""),
-		markerInfo,
+		processingInfo,
 		widget.NewLabel(""),
-		dimensionInfo,
-		widget.NewLabel(""),
-		widget.NewLabelWithStyle("Additional Options", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		loggingInfo,
+		settingsInfo,
 		widget.NewLabel(""),
 		processBtn,
 		gui.progress,
 		gui.status,
 	)
 
-	scrollContainer := container.NewScroll(mainContent)
-
+	scrollContainer := container.NewScroll(content)
 	paddedContainer := container.NewPadded(scrollContainer)
 
 	gui.window.SetContent(paddedContainer)
 
 	gui.window.Resize(fyne.NewSize(700, 800))
 	gui.window.SetFixedSize(false)
+
+	// Initial state
+	gui.handleModeChange(gui.modeSelect.Selected)
 }
 
 func createInfoSection(title, tooltip string, content fyne.CanvasObject) *widget.Card {
 	infoIcon := widget.NewIcon(theme.InfoIcon())
-	tooltipLabel := widget.NewLabelWithStyle(tooltip, fyne.TextAlignLeading, fyne.TextStyle{})
+	tooltipLabel := widget.NewLabel(tooltip)
 	tooltipLabel.Wrapping = fyne.TextWrapWord
 
 	header := container.NewHBox(
@@ -226,6 +228,7 @@ func createInfoSection(title, tooltip string, content fyne.CanvasObject) *widget
 		container.NewVBox(
 			header,
 			tooltipLabel,
+			widget.NewLabel(""),
 			content,
 		),
 	)
@@ -250,8 +253,8 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 		return
 	}
 
-	// Validate dimensions if checking is enabled
-	if gui.checkDimensionsCheck.Checked {
+	// Validate dimensions if needed
+	if gui.processingMode == ModeOnlyDimensions || gui.processingMode == ModeBoth {
 		width, err := strconv.ParseFloat(gui.widthEntry.Text, 64)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("invalid width value"), gui.window)
@@ -266,35 +269,30 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 			dialog.ShowError(fmt.Errorf("dimensions must be greater than 0"), gui.window)
 			return
 		}
+		gui.dimensions.Width = width
+		gui.dimensions.Height = height
 	}
 
-	// Check Anki connection first
+	// Check Anki connection
 	if err := gui.ankiService.CheckConnection(); err != nil {
 		dialog.ShowError(fmt.Errorf("Anki connection error: %v\nPlease make sure Anki is running and AnkiConnect is installed", err), gui.window)
 		return
 	}
 
-	var err error
-	outputDir := filepath.Join(os.TempDir(), "notesankify-output")
-
-	width := utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH
-	height := utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT
-	if gui.checkDimensionsCheck.Checked {
-		width, _ = strconv.ParseFloat(gui.widthEntry.Text, 64)
-		height, _ = strconv.ParseFloat(gui.heightEntry.Text, 64)
+	// Create processor configuration based on mode
+	config := pdf.ProcessorConfig{
+		TempDir:    filepath.Join(os.TempDir(), "notesankify-temp"),
+		OutputDir:  filepath.Join(os.TempDir(), "notesankify-output"),
+		Dimensions: gui.dimensions,
+		ProcessingOptions: pdf.ProcessingOptions{
+			CheckDimensions: gui.processingMode == ModeOnlyDimensions || gui.processingMode == ModeBoth,
+			CheckMarkers:    gui.processingMode == ModeOnlyMarkers || gui.processingMode == ModeBoth,
+		},
+		Logger: gui.log,
 	}
 
-	gui.processor, err = pdf.NewProcessor(
-		filepath.Join(os.TempDir(), "notesankify-temp"),
-		outputDir,
-		models.PageDimensions{
-			Width:  width,
-			Height: height,
-		},
-		!gui.checkMarkersCheck.Checked,    // Invert the logic for skip flags
-		!gui.checkDimensionsCheck.Checked, // Invert the logic for skip flags
-		gui.log,
-	)
+	var err error
+	gui.processor, err = pdf.NewProcessor(config)
 	if err != nil {
 		dialog.ShowError(fmt.Errorf("failed to initialize processor: %v", err), gui.window)
 		return
@@ -303,55 +301,7 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 	gui.progress.Show()
 	gui.updateStatus("Processing files...")
 
-	// Process in goroutine to keep UI responsive
-	go func() {
-		defer func() {
-			gui.mutex.Lock()
-			gui.progress.Hide()
-			gui.mutex.Unlock()
-		}()
-
-		report := &anki.ProcessingReport{
-			StartTime: time.Now(),
-		}
-
-		pdfs, err := gui.scanner.FindPDFs(context.Background(), gui.dirEntry.Text)
-		if err != nil {
-			gui.showError(fmt.Sprintf("Error finding PDFs: %v", err))
-			return
-		}
-
-		gui.updateStatus(fmt.Sprintf("Found %d PDFs to process", len(pdfs)))
-
-		for _, pdf := range pdfs {
-			report.ProcessedPDFs++
-			gui.updateStatus(fmt.Sprintf("Processing: %s", pdf.RelativePath))
-
-			stats, err := gui.processor.ProcessPDF(context.Background(), pdf.AbsolutePath)
-			if err != nil {
-				gui.showError(fmt.Sprintf("Error processing %s: %v", pdf.RelativePath, err))
-				continue
-			}
-
-			if stats.FlashcardCount > 0 {
-				deckName := anki.GetDeckNameFromPath(gui.rootDeckEntry.Text, pdf.RelativePath)
-				report.TotalFlashcards += stats.FlashcardCount
-
-				if err := gui.ankiService.CreateDeck(deckName); err != nil {
-					gui.showError(fmt.Sprintf("Error creating deck %s: %v", deckName, err))
-					continue
-				}
-
-				if err := gui.ankiService.AddAllFlashcards(deckName, stats.ImagePairs, report); err != nil {
-					gui.showError(fmt.Sprintf("Error adding flashcards to deck %s: %v", deckName, err))
-					continue
-				}
-			}
-		}
-
-		report.EndTime = time.Now()
-		gui.showCompletionDialog(report)
-	}()
+	go gui.processFiles()
 }
 
 func (gui *NotesAnkifyGUI) showError(message string) {
@@ -366,7 +316,6 @@ func (gui *NotesAnkifyGUI) showError(message string) {
 func (gui *NotesAnkifyGUI) updateStatus(message string) {
 	gui.mutex.Lock()
 	defer gui.mutex.Unlock()
-
 	gui.status.SetText(message)
 }
 
@@ -380,8 +329,8 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 			"Total Flashcards: %d\n"+
 			"Cards Added: %d\n"+
 			"Cards Skipped: %d\n"+
-			"Time Taken: %v\n"+
-			"Logs saved in: %s",
+			"Time Taken: %v\n\n"+
+			"Log file saved to: %s",
 		report.ProcessedPDFs,
 		report.TotalFlashcards,
 		report.AddedCount,
@@ -410,13 +359,13 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 	), gui.window)
 
 	customDialog.Show()
-
 	gui.status.SetText("Ready to process files...")
 }
+
 func setupLogging() (*logger.Logger, string, error) {
 	logsDir := "logs"
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
-		return nil, "", fmt.Errorf("failed to create logs directory: %v", err)
+		return nil, "", fmt.Errorf("failed to create logs directory: %w", err)
 	}
 
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
@@ -424,17 +373,82 @@ func setupLogging() (*logger.Logger, string, error) {
 
 	logFile, err := os.Create(logFileName)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to create log file: %v", err)
+		return nil, "", fmt.Errorf("failed to create log file: %w", err)
 	}
 
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
-
 	log := logger.New(
 		logger.WithPrefix("[notesankify-gui] "),
 		logger.WithOutput(multiWriter),
 	)
 
 	return log, logFileName, nil
+}
+
+func (gui *NotesAnkifyGUI) handleModeChange(selected string) {
+	switch selected {
+	case "Pages with Both Markers and Matching Dimensions":
+		gui.processingMode = ModeBoth
+		gui.dimContainer.Show()
+	case "Only Pages with QUESTION/ANSWER Markers":
+		gui.processingMode = ModeOnlyMarkers
+		gui.dimContainer.Hide()
+	case "Only Pages Matching Dimensions":
+		gui.processingMode = ModeOnlyDimensions
+		gui.dimContainer.Show()
+	case "Process All Pages":
+		gui.processingMode = ModeProcessAll
+		gui.dimContainer.Hide()
+	}
+}
+
+func (gui *NotesAnkifyGUI) processFiles() {
+	defer func() {
+		gui.mutex.Lock()
+		gui.progress.Hide()
+		gui.mutex.Unlock()
+	}()
+
+	report := &anki.ProcessingReport{
+		StartTime: time.Now(),
+	}
+
+	pdfs, err := gui.scanner.FindPDFs(context.Background(), gui.dirEntry.Text)
+	if err != nil {
+		gui.showError(fmt.Sprintf("Error finding PDFs: %v", err))
+		return
+	}
+
+	gui.updateStatus(fmt.Sprintf("Found %d PDFs to process", len(pdfs)))
+
+	for _, pdf := range pdfs {
+		report.ProcessedPDFs++
+		gui.updateStatus(fmt.Sprintf("Processing: %s", pdf.RelativePath))
+
+		stats, err := gui.processor.ProcessPDF(context.Background(), pdf.AbsolutePath)
+		if err != nil {
+			gui.showError(fmt.Sprintf("Error processing %s: %v", pdf.RelativePath, err))
+			continue
+		}
+
+		if stats.FlashcardCount > 0 {
+			deckName := anki.GetDeckNameFromPath(gui.rootDeckEntry.Text, pdf.RelativePath)
+			report.TotalFlashcards += stats.FlashcardCount
+
+			if err := gui.ankiService.CreateDeck(deckName); err != nil {
+				gui.showError(fmt.Sprintf("Error creating deck %s: %v", deckName, err))
+				continue
+			}
+
+			if err := gui.ankiService.AddAllFlashcards(deckName, stats.ImagePairs, report); err != nil {
+				gui.showError(fmt.Sprintf("Error adding flashcards to deck %s: %v", deckName, err))
+				continue
+			}
+		}
+	}
+
+	report.EndTime = time.Now()
+	gui.showCompletionDialog(report)
 }
 
 func (gui *NotesAnkifyGUI) Run() {

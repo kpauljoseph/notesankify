@@ -24,8 +24,8 @@ func main() {
 	debug := flag.Bool("debug", false, "enable debug mode with trace logging")
 	width := flag.Float64("width", 0.0, "custom flashcard width (defaults to Goodnotes standard if not specified)")
 	height := flag.Float64("height", 0.0, "custom flashcard height (defaults to Goodnotes standard if not specified)")
-	skipMarkerCheck := flag.Bool("skip-markers", false, "skip checking for QUESTION/ANSWER markers in pages")
-	skipDimensionCheck := flag.Bool("skip-dimensions", false, "skip checking page dimensions")
+	disableMarkerCheck := flag.Bool("no-markers", false, "disable checking for QUESTION/ANSWER markers in pages")
+	disableDimensionCheck := flag.Bool("no-dimensions", false, "disable checking page dimensions")
 
 	flag.Parse()
 
@@ -68,31 +68,37 @@ func main() {
 		cfg.PDFSourceDir = *pdfDir
 	}
 
+	// Set up dimensions
+	dimensions := models.PageDimensions{
+		Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+		Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+	}
+
 	if *width > 0 && *height > 0 {
-		cfg.FlashcardSize.Width = *width
-		cfg.FlashcardSize.Height = *height
+		dimensions.Width = *width
+		dimensions.Height = *height
 		log.Debug("Using custom dimensions: %.2f x %.2f", *width, *height)
 	} else {
-		log.Debug("Using default Goodnotes dimensions: %.2f x %.2f",
-			utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
-			utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT)
+		log.Debug("Using default standard size dimensions: %.2f x %.2f",
+			dimensions.Width, dimensions.Height)
 	}
 
 	if _, err := os.Stat(cfg.PDFSourceDir); os.IsNotExist(err) {
 		log.Fatal("PDF directory does not exist: %s", cfg.PDFSourceDir)
 	}
 
-	processor, err := pdf.NewProcessor(
-		filepath.Join(os.TempDir(), "notesankify-temp"),
-		*outputDir,
-		models.PageDimensions{
-			Width:  cfg.FlashcardSize.Width,
-			Height: cfg.FlashcardSize.Height,
+	processorConfig := pdf.ProcessorConfig{
+		TempDir:    filepath.Join(os.TempDir(), "notesankify-temp"),
+		OutputDir:  *outputDir,
+		Dimensions: dimensions,
+		ProcessingOptions: pdf.ProcessingOptions{
+			CheckDimensions: !*disableDimensionCheck, // Enabled by default
+			CheckMarkers:    !*disableMarkerCheck,    // Enabled by default
 		},
-		*skipMarkerCheck,
-		*skipDimensionCheck,
-		log,
-	)
+		Logger: log,
+	}
+
+	processor, err := pdf.NewProcessor(processorConfig)
 	if err != nil {
 		log.Fatal("Error initializing processor: %v", err)
 	}
@@ -119,6 +125,7 @@ func main() {
 
 	log.Info("Found %d PDFs to process", len(pdfs))
 
+	// Initialize and check Anki connection
 	ankiService := anki.NewService(log)
 
 	log.Debug("Checking Anki connection...")
