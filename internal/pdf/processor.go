@@ -23,16 +23,17 @@ type ProcessingStats struct {
 }
 
 type Processor struct {
-	tempDir       string
-	outputDir     string
-	flashcardSize models.PageDimensions
-	logger        *logger.Logger
-	splitter      *Splitter
+	tempDir         string
+	outputDir       string
+	flashcardSize   models.PageDimensions
+	skipMarkerCheck bool
+	logger          *logger.Logger
+	splitter        *Splitter
 }
 
 var _ PDFProcessor = (*Processor)(nil)
 
-func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, logger *logger.Logger) (*Processor, error) {
+func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, skipMarkerCheck bool, logger *logger.Logger) (*Processor, error) {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -47,11 +48,12 @@ func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions
 	}
 
 	return &Processor{
-		tempDir:       tempDir,
-		outputDir:     outputDir,
-		flashcardSize: flashcardSize,
-		logger:        logger,
-		splitter:      splitter,
+		tempDir:         tempDir,
+		outputDir:       outputDir,
+		flashcardSize:   flashcardSize,
+		logger:          logger,
+		splitter:        splitter,
+		skipMarkerCheck: skipMarkerCheck,
 	}, nil
 }
 
@@ -85,17 +87,24 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 
 			p.logger.Debug("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
-			isStandardSize := p.matchesFlashcardDimensions(width, height)
+			isFlashcardSize := p.MatchesFlashcardDimensions(width, height)
 
 			isFlashcard := false
-			if isStandardSize {
-				text, err := doc.Text(pageIndex)
-				if err != nil {
-					p.logger.Debug("Warning: couldn't extract text from page %d: %v", pageNum, err)
-					continue
+			if isFlashcardSize {
+				if p.skipMarkerCheck {
+					isFlashcard = true
+					p.logger.Debug("Skipping marker check - treating page %d as flashcard based on dimensions", pageNum)
+				} else {
+					text, err := doc.Text(pageIndex)
+					if err != nil {
+						p.logger.Debug("Warning: couldn't extract text from page %d: %v", pageNum, err)
+						continue
+					}
+					isFlashcard = ContainsFlashcardMarkers(text)
+					if isFlashcard {
+						p.logger.Debug("Found QUESTION/ANSWER markers in page %d", pageNum)
+					}
 				}
-
-				isFlashcard = ContainsFlashcardMarkers(text)
 			}
 
 			if isFlashcard {
@@ -137,7 +146,7 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 	return stats, nil
 }
 
-func (p *Processor) matchesFlashcardDimensions(width, height float64) bool {
+func (p *Processor) MatchesFlashcardDimensions(width, height float64) bool {
 	targetWidth := p.flashcardSize.Width
 	targetHeight := p.flashcardSize.Height
 
@@ -177,6 +186,10 @@ func saveImage(img *image.RGBA, path string) error {
 	defer f.Close()
 
 	return png.Encode(f, img)
+}
+
+func (p *Processor) ShouldCheckMarkers() bool {
+	return !p.skipMarkerCheck
 }
 
 func (p *Processor) Cleanup() error {

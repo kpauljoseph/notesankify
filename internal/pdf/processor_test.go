@@ -51,6 +51,7 @@ var _ = Describe("PDF Processor", func() {
 				Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 			},
+			false, // skipMarkerCheck default to false
 			testLogger,
 		)
 		Expect(err).NotTo(HaveOccurred())
@@ -65,11 +66,22 @@ var _ = Describe("PDF Processor", func() {
 		testLogger.Debug("Test cleanup completed")
 	})
 
-	Context("Goodnotes dimensions", func() {
-		DescribeTable("matchesGoodnotesDimensions",
+	Context("Standard Size Flashcard dimensions", func() {
+		DescribeTable("matchesFlashcardDimensions",
 			func(width, height float64, shouldMatch bool) {
 				testLogger.Trace("Testing dimensions: %.2f x %.2f", width, height)
-				result := pdf.MatchesGoodnotesDimensions(width, height)
+				processor, err := pdf.NewProcessor(
+					tempDir,
+					outputDir,
+					models.PageDimensions{
+						Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
+						Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
+					},
+					false,
+					testLogger,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result := processor.MatchesFlashcardDimensions(width, height)
 				Expect(result).To(Equal(shouldMatch))
 			},
 			Entry("exact match",
@@ -137,6 +149,7 @@ var _ = Describe("PDF Processor", func() {
 					Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 					Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 				},
+				false,
 				testLogger,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -152,6 +165,32 @@ var _ = Describe("PDF Processor", func() {
 			Expect(tempDir).NotTo(BeADirectory())
 			Expect(outputDir).To(BeADirectory())
 			testLogger.Debug("Successfully cleaned up temporary directory")
+		})
+	})
+
+	Context("Marker checking behavior", func() {
+		It("should respect marker checking flag", func() {
+			normalProcessor, err := pdf.NewProcessor(
+				tempDir,
+				outputDir,
+				models.PageDimensions{Width: 455.04, Height: 587.52},
+				false,
+				testLogger,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			skipMarkersProcessor, err := pdf.NewProcessor(
+				tempDir,
+				outputDir,
+				models.PageDimensions{Width: 455.04, Height: 587.52},
+				true,
+				testLogger,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(normalProcessor.ShouldCheckMarkers()).To(BeTrue())
+
+			Expect(skipMarkersProcessor.ShouldCheckMarkers()).To(BeFalse())
 		})
 	})
 })

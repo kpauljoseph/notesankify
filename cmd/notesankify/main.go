@@ -24,7 +24,7 @@ func main() {
 	debug := flag.Bool("debug", false, "enable debug mode with trace logging")
 	width := flag.Float64("width", 0.0, "custom flashcard width (defaults to Goodnotes standard if not specified)")
 	height := flag.Float64("height", 0.0, "custom flashcard height (defaults to Goodnotes standard if not specified)")
-
+	skipMarkerCheck := flag.Bool("skip-markers", false, "skip checking for QUESTION/ANSWER markers in pages")
 	flag.Parse()
 
 	report := &anki.ProcessingReport{
@@ -87,6 +87,7 @@ func main() {
 			Width:  cfg.FlashcardSize.Width,
 			Height: cfg.FlashcardSize.Height,
 		},
+		*skipMarkerCheck,
 		log,
 	)
 	if err != nil {
