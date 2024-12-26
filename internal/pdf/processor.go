@@ -23,17 +23,18 @@ type ProcessingStats struct {
 }
 
 type Processor struct {
-	tempDir         string
-	outputDir       string
-	flashcardSize   models.PageDimensions
-	skipMarkerCheck bool
-	logger          *logger.Logger
-	splitter        *Splitter
+	tempDir            string
+	outputDir          string
+	flashcardSize      models.PageDimensions
+	skipMarkerCheck    bool
+	skipDimensionCheck bool
+	logger             *logger.Logger
+	splitter           *Splitter
 }
 
 var _ PDFProcessor = (*Processor)(nil)
 
-func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, skipMarkerCheck bool, logger *logger.Logger) (*Processor, error) {
+func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions, skipMarkerCheck bool, skipDimensionCheck bool, logger *logger.Logger) (*Processor, error) {
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -48,12 +49,13 @@ func NewProcessor(tempDir, outputDir string, flashcardSize models.PageDimensions
 	}
 
 	return &Processor{
-		tempDir:         tempDir,
-		outputDir:       outputDir,
-		flashcardSize:   flashcardSize,
-		logger:          logger,
-		splitter:        splitter,
-		skipMarkerCheck: skipMarkerCheck,
+		tempDir:            tempDir,
+		outputDir:          outputDir,
+		flashcardSize:      flashcardSize,
+		logger:             logger,
+		splitter:           splitter,
+		skipMarkerCheck:    skipMarkerCheck,
+		skipDimensionCheck: skipDimensionCheck,
 	}, nil
 }
 
@@ -87,13 +89,22 @@ func (p *Processor) ProcessPDF(ctx context.Context, pdfPath string) (ProcessingS
 
 			p.logger.Debug("Page %d dimensions: %.2f x %.2f", pageNum, width, height)
 
-			isFlashcardSize := p.MatchesFlashcardDimensions(width, height)
+			isCorrectSize := true // Default to true if skipping dimension check
+			if !p.skipDimensionCheck {
+				isCorrectSize = p.MatchesFlashcardDimensions(width, height)
+				if !isCorrectSize {
+					p.logger.Debug("Page %d does not match required dimensions", pageNum)
+					continue
+				}
+			} else {
+				p.logger.Debug("Skipping dimension check for page %d", pageNum)
+			}
 
 			isFlashcard := false
-			if isFlashcardSize {
+			if isCorrectSize { // This check is now always true if dimensions are skipped
 				if p.skipMarkerCheck {
 					isFlashcard = true
-					p.logger.Debug("Skipping marker check - treating page %d as flashcard based on dimensions", pageNum)
+					p.logger.Debug("Skipping marker check - treating page %d as flashcard", pageNum)
 				} else {
 					text, err := doc.Text(pageIndex)
 					if err != nil {
@@ -190,6 +201,10 @@ func saveImage(img *image.RGBA, path string) error {
 
 func (p *Processor) ShouldCheckMarkers() bool {
 	return !p.skipMarkerCheck
+}
+
+func (p *Processor) ShouldCheckDimensions() bool {
+	return !p.skipDimensionCheck
 }
 
 func (p *Processor) Cleanup() error {

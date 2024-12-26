@@ -52,6 +52,7 @@ var _ = Describe("PDF Processor", func() {
 				Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 			},
 			false, // skipMarkerCheck default to false
+			false, // skipDimensionCheck default to false
 			testLogger,
 		)
 		Expect(err).NotTo(HaveOccurred())
@@ -77,6 +78,7 @@ var _ = Describe("PDF Processor", func() {
 						Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
 						Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 					},
+					false,
 					false,
 					testLogger,
 				)
@@ -150,6 +152,7 @@ var _ = Describe("PDF Processor", func() {
 					Height: utils.GOODNOTES_STANDARD_FLASHCARD_HEIGHT,
 				},
 				false,
+				false,
 				testLogger,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -175,6 +178,7 @@ var _ = Describe("PDF Processor", func() {
 				outputDir,
 				models.PageDimensions{Width: 455.04, Height: 587.52},
 				false,
+				false,
 				testLogger,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -184,6 +188,7 @@ var _ = Describe("PDF Processor", func() {
 				outputDir,
 				models.PageDimensions{Width: 455.04, Height: 587.52},
 				true,
+				false,
 				testLogger,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -191,6 +196,34 @@ var _ = Describe("PDF Processor", func() {
 			Expect(normalProcessor.ShouldCheckMarkers()).To(BeTrue())
 
 			Expect(skipMarkersProcessor.ShouldCheckMarkers()).To(BeFalse())
+		})
+	})
+
+	Context("Dimension checking behavior", func() {
+		It("should respect dimension checking flag", func() {
+			normalProcessor, err := pdf.NewProcessor(
+				tempDir,
+				outputDir,
+				models.PageDimensions{Width: 455.04, Height: 587.52},
+				false,
+				false,
+				testLogger,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			skipDimensionsProcessor, err := pdf.NewProcessor(
+				tempDir,
+				outputDir,
+				models.PageDimensions{Width: 455.04, Height: 587.52},
+				false,
+				true,
+				testLogger,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(normalProcessor.ShouldCheckDimensions()).To(BeTrue())
+
+			Expect(skipDimensionsProcessor.ShouldCheckDimensions()).To(BeFalse())
 		})
 	})
 })

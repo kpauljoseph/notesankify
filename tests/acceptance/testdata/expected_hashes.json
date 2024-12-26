@@ -20,6 +20,26 @@
     }
   },
   {
+    "filename": "mixedSize_allPages_topQuestionBottomAnswer.pdf",
+    "pages": {
+      "1": {
+        "hash": "9d903616d87b38ac2de19feb28e626e7ba2101c7929b2d177e381614862a65df"
+      },
+      "2": {
+        "hash": "04cd0570b75074f8b24baf32d0326708e46a5f0d579f996c3d7fdfbb3e63567c"
+      },
+      "3": {
+        "hash": "404e7446af9edf5b43d1e0d32dc2ec759b237b81f453d5861c2e47ffc49d7ea6"
+      },
+      "4": {
+        "hash": "1730ee59b00e4f2b1fa2967b6c34123e3bccffeff6896df75f66ffe088d4681e"
+      },
+      "5": {
+        "hash": "83a7cc528dd0862c7011a29fc0069fb7e3767995eb8bcfb7863a2e9a415161fe"
+      }
+    }
+  },
+  {
     "filename": "mixed_content_largeNormalPage_smallFlashcardPage.pdf",
     "pages": {
       "2": {

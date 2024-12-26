@@ -25,6 +25,8 @@ func main() {
 	width := flag.Float64("width", 0.0, "custom flashcard width (defaults to Goodnotes standard if not specified)")
 	height := flag.Float64("height", 0.0, "custom flashcard height (defaults to Goodnotes standard if not specified)")
 	skipMarkerCheck := flag.Bool("skip-markers", false, "skip checking for QUESTION/ANSWER markers in pages")
+	skipDimensionCheck := flag.Bool("skip-dimensions", false, "skip checking page dimensions")
+
 	flag.Parse()
 
 	report := &anki.ProcessingReport{
@@ -88,6 +90,7 @@ func main() {
 			Height: cfg.FlashcardSize.Height,
 		},
 		*skipMarkerCheck,
+		*skipDimensionCheck,
 		log,
 	)
 	if err != nil {
