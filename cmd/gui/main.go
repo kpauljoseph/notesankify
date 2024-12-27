@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
@@ -59,6 +60,11 @@ type NotesAnkifyGUI struct {
 	verboseCheck  *widget.Check
 	progress      *widget.ProgressBarInfinite
 	status        *widget.Label
+}
+
+type InfoButton struct {
+	widget.Button
+	popup *widget.PopUp
 }
 
 func NewNotesAnkifyGUI() *NotesAnkifyGUI {
@@ -159,17 +165,17 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	processBtn.Importance = widget.HighImportance
 
 	// Create info sections
-	pdfSourceInfo := createInfoSection("PDF Source",
+	pdfSourceInfo := gui.createInfoSection("PDF Source",
 		"Select the directory containing your PDF files for processing into Anki flashcards.",
 		container.NewVBox(dirContainer))
 
-	deckInfo := createInfoSection("Root Deck",
+	deckInfo := gui.createInfoSection("Root Deck",
 		"Specify a root deck name to organize your flashcards.\n"+
 			"If not provided, folder names will be used for deck organization.\n"+
 			"Example: 'MyStudies' will create 'MyStudies::Math::Calculus'",
 		container.NewVBox(gui.rootDeckEntry))
 
-	processingInfo := createInfoSection("Processing Mode",
+	processingInfo := gui.createInfoSection("Processing Mode",
 		"Choose how to identify flashcards in your PDF files:\n"+
 			"• Pages with Both: The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n"+
 			"• Only Markers: The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n"+
@@ -182,7 +188,7 @@ func (gui *NotesAnkifyGUI) setupUI() {
 			gui.dimContainer,
 		))
 
-	settingsInfo := createInfoSection("Additional Settings",
+	settingsInfo := gui.createInfoSection("Additional Settings",
 		"Enable verbose logging to see detailed processing information.",
 		container.NewVBox(gui.verboseCheck))
 
@@ -212,26 +218,52 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	gui.handleModeChange(gui.modeSelect.Selected)
 }
 
-func createInfoSection(title, tooltip string, content fyne.CanvasObject) *widget.Card {
-	infoIcon := widget.NewIcon(theme.InfoIcon())
-	tooltipLabel := widget.NewLabel(tooltip)
-	tooltipLabel.Wrapping = fyne.TextWrapWord
+func NewInfoButton(popup *widget.PopUp) *InfoButton {
+	button := &InfoButton{popup: popup}
+	button.ExtendBaseWidget(button)
+	button.SetIcon(theme.InfoIcon())
+	button.Importance = widget.LowImportance
+	return button
+}
+
+func (b *InfoButton) MouseOut() {
+	b.popup.Hide()
+}
+
+func (b *InfoButton) MouseIn(*desktop.MouseEvent) {
+	buttonPos := b.Position()
+	b.popup.Resize(fyne.NewSize(400, 0)) // Set fixed width but auto-height
+	b.popup.Move(buttonPos.Add(fyne.NewPos(30, 10)))
+	b.popup.Show()
+}
+
+func (gui *NotesAnkifyGUI) createInfoSection(title, tooltip string, content fyne.CanvasObject) *widget.Card {
+	tooltipText := widget.NewRichTextWithText(tooltip)
+	tooltipText.Wrapping = fyne.TextWrapWord
+
+	popup := widget.NewPopUp(
+		container.NewPadded(tooltipText),
+		gui.window.Canvas(),
+	)
+	popup.Hide()
+
+	infoBtn := NewInfoButton(popup)
 
 	header := container.NewHBox(
 		widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		infoIcon,
+		infoBtn,
 	)
 
-	return widget.NewCard(
+	card := widget.NewCard(
 		"",
 		"",
 		container.NewVBox(
 			header,
-			tooltipLabel,
-			widget.NewLabel(""),
 			content,
 		),
 	)
+
+	return card
 }
 
 func (gui *NotesAnkifyGUI) handleBrowse() {
