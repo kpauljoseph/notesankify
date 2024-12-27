@@ -355,6 +355,35 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 	gui.mutex.Lock()
 	defer gui.mutex.Unlock()
 
+	processingCompleteBanner := `
++------------------------------------------------------------------------------+
+|                           PROCESSING COMPLETE                                  |
++------------------------------------------------------------------------------+`
+
+	skippedCardsBanner := `
++------------------------------------------------------------------------------+
+|                            SKIPPED CARDS                                      |
++------------------------------------------------------------------------------+`
+
+	gui.log.Info("\n%s\n", processingCompleteBanner)
+	gui.log.Info("- Total PDFs processed: %d", report.ProcessedPDFs)
+	gui.log.Info("- Total flashcards found: %d", report.TotalFlashcards)
+	gui.log.Info("- Cards Added: %d", report.AddedCount)
+	gui.log.Info("- Cards Skipped: %d", report.SkippedCount)
+	gui.log.Info("- Time Taken: %v", report.TimeTaken())
+	gui.log.Info("- Log file saved to: %s\n\n\n\n\n\n", gui.logFileName)
+
+	// If there were skipped cards, log them too
+	if report.SkippedCount > 0 {
+		gui.log.Info("\n%s\n", skippedCardsBanner)
+		for _, card := range report.SkippedCards {
+			gui.log.Info("- %s (Page %d, Hash:%s)",
+				card.DeckName,
+				card.PageNumber,
+				card.Hash)
+		}
+	}
+
 	message := fmt.Sprintf(
 		"Processing Complete!\n\n"+
 			"PDFs Processed: %d\n"+
@@ -395,7 +424,7 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 }
 
 func setupLogging() (*logger.Logger, string, error) {
-	logsDir := "logs"
+	logsDir := "notesankify-logs"
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
 		return nil, "", fmt.Errorf("failed to create logs directory: %w", err)
 	}
@@ -403,7 +432,12 @@ func setupLogging() (*logger.Logger, string, error) {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	logFileName := filepath.Join(logsDir, fmt.Sprintf("notesankify_%s.log", timestamp))
 
-	logFile, err := os.Create(logFileName)
+	absLogPath, err := filepath.Abs(logFileName)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	logFile, err := os.Create(absLogPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create log file: %w", err)
 	}
@@ -414,7 +448,7 @@ func setupLogging() (*logger.Logger, string, error) {
 		logger.WithOutput(multiWriter),
 	)
 
-	return log, logFileName, nil
+	return log, absLogPath, nil
 }
 
 func (gui *NotesAnkifyGUI) handleModeChange(selected string) {
@@ -472,7 +506,7 @@ func (gui *NotesAnkifyGUI) processFiles() {
 				continue
 			}
 
-			if err := gui.ankiService.AddAllFlashcards(deckName, stats.ImagePairs, report); err != nil {
+			if err := gui.ankiService.AddAllFlashcards(deckName, stats.ImagePairs, stats.PageNumbers, report); err != nil {
 				gui.showError(fmt.Sprintf("Error adding flashcards to deck %s: %v", deckName, err))
 				continue
 			}

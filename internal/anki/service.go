@@ -68,11 +68,17 @@ type ProcessingReport struct {
 	TotalProcessed  int
 	AddedCount      int
 	SkippedCount    int
-	SkippedCards    []string
+	SkippedCards    []SkippedCardInfo
 	ProcessedPDFs   int
 	TotalFlashcards int
 	StartTime       time.Time
 	EndTime         time.Time
+}
+
+type SkippedCardInfo struct {
+	DeckName   string
+	Hash       string
+	PageNumber int
 }
 
 func NewService(logger *logger.Logger) *Service {
@@ -205,7 +211,7 @@ func (s *Service) findExistingNoteByHash(hash string) (int, error) {
 	return 0, nil
 }
 
-func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair, report *ProcessingReport) error {
+func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair, pageNum int, report *ProcessingReport) error {
 	report.TotalProcessed++
 
 	s.logger.Debug("Processing new flashcard for deck: %s", deckName)
@@ -221,7 +227,11 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair, report *Proc
 		s.logger.Info("Skipping duplicate flashcard with hash: %s", pair.Hash)
 		report.SkippedCount++
 		report.SkippedCards = append(report.SkippedCards,
-			fmt.Sprintf("%s (Hash:%s)", deckName, pair.Hash))
+			SkippedCardInfo{
+				DeckName:   deckName,
+				Hash:       pair.Hash,
+				PageNumber: pageNum,
+			})
 		return nil
 	}
 
@@ -274,15 +284,15 @@ func (s *Service) AddFlashcard(deckName string, pair pdf.ImagePair, report *Proc
 	return nil
 }
 
-func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair, report *ProcessingReport) error {
+func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair, pageNumbers []int, report *ProcessingReport) error {
 	var successCount, failCount int
 
 	if err := s.ensureModelExists(); err != nil {
 		return fmt.Errorf("failed to ensure model exists: %w", err)
 	}
 
-	for _, pair := range pairs {
-		if err := s.AddFlashcard(deckName, pair, report); err != nil {
+	for index, pair := range pairs {
+		if err := s.AddFlashcard(deckName, pair, pageNumbers[index], report); err != nil {
 			s.logger.Debug("Error adding flashcard: %v", err)
 			failCount++
 			continue
@@ -294,7 +304,7 @@ func (s *Service) AddAllFlashcards(deckName string, pairs []pdf.ImagePair, repor
 		return fmt.Errorf("failed to add %d out of %d flashcards", failCount, len(pairs))
 	}
 
-	s.logger.Debug("Successfully processed %d flashcards", successCount)
+	s.logger.Debug("Successfully processed %d flashcards\n\n\n\n\n", successCount)
 
 	return nil
 }
@@ -393,7 +403,10 @@ func (r *ProcessingReport) Print(logger *logger.Logger) {
 		fmt.Printf("\n\n\nSkipped Cards:")
 		fmt.Printf("\n-------------------------------------------------------------\n")
 		for _, card := range r.SkippedCards {
-			fmt.Printf("\n- %s", card)
+			fmt.Printf("- %s (Page %d, Hash:%s)",
+				card.DeckName,
+				card.PageNumber,
+				card.Hash)
 		}
 	}
 }

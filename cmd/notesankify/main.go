@@ -153,7 +153,7 @@ func main() {
 			}
 			log.Debug("Created/Updated deck: %s", deckName)
 
-			if err := ankiService.AddAllFlashcards(deckName, stats.ImagePairs, report); err != nil {
+			if err := ankiService.AddAllFlashcards(deckName, stats.ImagePairs, stats.PageNumbers, report); err != nil {
 				log.Info("Error adding flashcards to deck %s: %v", deckName, err)
 				continue
 			}
