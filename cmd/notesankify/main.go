@@ -18,7 +18,7 @@ import (
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	pdfDir := flag.String("pdf-dir", "", "directory containing PDF files (overrides config)")
-	outputDir := flag.String("output-dir", getDefaultOutputDir(), "directory to save processed flashcards")
+	outputDir := flag.String("output-dir", utils.GetDefaultOutputDir(), "directory to save processed flashcards")
 	rootDeckName := flag.String("root-deck", "", "root deck name for organizing flashcards (optional)")
 	verbose := flag.Bool("verbose", false, "enable verbose logging")
 	debug := flag.Bool("debug", false, "enable debug mode with trace logging")
@@ -167,13 +167,4 @@ func main() {
 
 	report.EndTime = time.Now()
 	report.Print(log)
-}
-
-func getDefaultOutputDir() string {
-	tmpDir, err := os.MkdirTemp("", "notesankify-output-*")
-	if err != nil {
-		// If we can't create a temp directory, fall back to local directory
-		return "flashcards"
-	}
-	return tmpDir
 }

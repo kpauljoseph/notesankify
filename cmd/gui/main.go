@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
@@ -51,20 +50,16 @@ type NotesAnkifyGUI struct {
 	dimensions     models.PageDimensions
 
 	// UI components
-	dirEntry      *widget.Entry
-	rootDeckEntry *widget.Entry
-	modeSelect    *widget.Select
-	widthEntry    *widget.Entry
-	heightEntry   *widget.Entry
-	dimContainer  *fyne.Container
-	verboseCheck  *widget.Check
-	progress      *widget.ProgressBarInfinite
-	status        *widget.Label
-}
-
-type InfoButton struct {
-	widget.Button
-	popup *widget.PopUp
+	dirEntry       *widget.Entry
+	rootDeckEntry  *widget.Entry
+	modeSelect     *widget.Select
+	widthEntry     *widget.Entry
+	heightEntry    *widget.Entry
+	outputDirEntry *widget.Entry
+	dimContainer   *fyne.Container
+	verboseCheck   *widget.Check
+	progress       *widget.ProgressBarInfinite
+	status         *widget.Label
 }
 
 func NewNotesAnkifyGUI() *NotesAnkifyGUI {
@@ -122,14 +117,16 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	// Processing mode selection
 	gui.modeSelect = widget.NewSelect(
 		[]string{
-			"Pages with Both QUESTION/ANSWER Markers and Matching Dimensions",
+			"Pages with QUESTION/ANSWER Markers and Matching Dimensions",
 			"Only Pages with QUESTION/ANSWER Markers",
 			"Only Pages Matching Dimensions",
 			"Process All Pages",
 		},
-		gui.handleModeChange,
+		nil,
 	)
-	gui.modeSelect.SetSelected("Pages with Both QUESTION/ANSWER Markers and Matching Dimensions") // Default mode
+	gui.modeSelect.SetSelected("Pages with QUESTION/ANSWER Markers and Matching Dimensions")
+
+	gui.modeSelect.OnChanged = gui.handleModeChange
 
 	// Dimension controls
 	gui.widthEntry = widget.NewEntry()
@@ -138,19 +135,40 @@ func (gui *NotesAnkifyGUI) setupUI() {
 
 	resetDimensionsBtn := widget.NewButton("Reset to Default", gui.resetDimensions)
 
-	dimensionsForm := container.NewGridWithColumns(4,
+	dimensionsForm := container.NewGridWithColumns(2,
 		widget.NewLabel("Width:"),
 		gui.widthEntry,
 		widget.NewLabel("Height:"),
 		gui.heightEntry,
 	)
 
-	gui.dimContainer = container.NewVBox(
+	gui.dimContainer = container.NewHBox(
 		dimensionsForm,
 		resetDimensionsBtn,
 	)
 
 	// Additional settings
+	// Optional output directory
+	gui.outputDirEntry = widget.NewEntry()
+	gui.outputDirEntry.SetText(utils.GetDefaultOutputDir())
+	gui.outputDirEntry.SetPlaceHolder("Output Directory (Optional - defaults to temporary directory)")
+	browseOutputDirBtn := widget.NewButton("Browse", func() {
+		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil {
+				dialog.ShowError(err, gui.window)
+				return
+			}
+			if uri == nil {
+				return
+			}
+			gui.outputDirEntry.SetText(uri.Path())
+		}, gui.window)
+	})
+	outputDirContainer := container.NewBorder(
+		nil, nil, nil, browseOutputDirBtn,
+		gui.outputDirEntry,
+	)
+
 	gui.verboseCheck = widget.NewCheck("Verbose Logging", func(checked bool) {
 		gui.log.SetVerbose(checked)
 	})
@@ -176,31 +194,40 @@ func (gui *NotesAnkifyGUI) setupUI() {
 		container.NewVBox(gui.rootDeckEntry))
 
 	processingInfo := gui.createInfoSection("Processing Mode",
-		"Choose how to identify flashcards in your PDF files:\n"+
-			"• Pages with Both: The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n"+
-			"• Only Markers: The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n"+
-			"• Only Dimensions: The Flashcard page must match specified dimensions\n"+
-			"• Process All: Split every PDF page into two halves top->question bottom->answer",
+		"Choose how to identify flashcards in your PDF files:",
 		container.NewVBox(
+			container.NewVBox(
+				widget.NewRichTextFromMarkdown(
+					"• **Pages with QUESTION/ANSWER Markers and Matching Dimensions**:\n\n"+
+						"	The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n\n\n\n"+
+						"• **Only Pages with QUESTION/ANSWER Markers**:\n\n"+
+						"	The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n\n\n\n"+
+						"• **Only Pages Matching Dimensions**:\n\n "+
+						"	The Flashcard page must match specified dimensions\n\n\n\n"+
+						"• **Process All Pages**:\n\n "+
+						"	Split every PDF page into two halves top->question bottom->answer",
+				),
+			),
 			gui.modeSelect,
-			widget.NewLabel(""),
-			widget.NewLabel("Dimensions:"),
 			gui.dimContainer,
 		))
 
 	settingsInfo := gui.createInfoSection("Additional Settings",
 		"Enable verbose logging to see detailed processing information.",
 		container.NewVBox(gui.verboseCheck))
+	outputDirInfo := gui.createInfoSection("Output Directory",
+		"Optional: Specify where to save the processed flashcard images.\n"+
+			"If not specified, a temporary directory will be used.\n"+
+			"Useful for debugging or manual inspection of processed cards.",
+		container.NewVBox(outputDirContainer))
 
 	content := container.NewVBox(
 		widget.NewLabelWithStyle("NotesAnkify", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 		pdfSourceInfo,
 		deckInfo,
-		widget.NewLabel(""),
 		processingInfo,
-		widget.NewLabel(""),
+		outputDirInfo,
 		settingsInfo,
-		widget.NewLabel(""),
 		processBtn,
 		gui.progress,
 		gui.status,
@@ -218,36 +245,27 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	gui.handleModeChange(gui.modeSelect.Selected)
 }
 
-func NewInfoButton(popup *widget.PopUp) *InfoButton {
-	button := &InfoButton{popup: popup}
-	button.ExtendBaseWidget(button)
-	button.SetIcon(theme.InfoIcon())
-	button.Importance = widget.LowImportance
-	return button
-}
-
-func (b *InfoButton) MouseOut() {
-	b.popup.Hide()
-}
-
-func (b *InfoButton) MouseIn(*desktop.MouseEvent) {
-	buttonPos := b.Position()
-	b.popup.Resize(fyne.NewSize(400, 0)) // Set fixed width but auto-height
-	b.popup.Move(buttonPos.Add(fyne.NewPos(30, 10)))
-	b.popup.Show()
-}
-
 func (gui *NotesAnkifyGUI) createInfoSection(title, tooltip string, content fyne.CanvasObject) *widget.Card {
-	tooltipText := widget.NewRichTextWithText(tooltip)
-	tooltipText.Wrapping = fyne.TextWrapWord
+	infoBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), nil)
+	infoBtn.Importance = widget.LowImportance
 
-	popup := widget.NewPopUp(
-		container.NewPadded(tooltipText),
-		gui.window.Canvas(),
+	helpText := widget.NewRichTextFromMarkdown(tooltip)
+	helpText.Wrapping = fyne.TextWrapWord
+
+	helpContainer := container.NewVBox(
+		container.NewPadded(helpText),
 	)
-	popup.Hide()
 
-	infoBtn := NewInfoButton(popup)
+	infoBtn.OnTapped = func() {
+		d := dialog.NewCustom(
+			title+" - Help",
+			"Close",
+			helpContainer,
+			gui.window,
+		)
+		d.Resize(fyne.NewSize(500, 0))
+		d.Show()
+	}
 
 	header := container.NewHBox(
 		widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
@@ -285,6 +303,13 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 		return
 	}
 
+	if gui.outputDirEntry.Text != "" {
+		if err := os.MkdirAll(gui.outputDirEntry.Text, 0755); err != nil {
+			dialog.ShowError(fmt.Errorf("failed to create output directory: %v", err), gui.window)
+			return
+		}
+	}
+
 	// Validate dimensions if needed
 	if gui.processingMode == ModeOnlyDimensions || gui.processingMode == ModeBoth {
 		width, err := strconv.ParseFloat(gui.widthEntry.Text, 64)
@@ -311,10 +336,12 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 		return
 	}
 
+	outputDir := gui.outputDirEntry.Text
+
 	// Create processor configuration based on mode
 	config := pdf.ProcessorConfig{
 		TempDir:    filepath.Join(os.TempDir(), "notesankify-temp"),
-		OutputDir:  filepath.Join(os.TempDir(), "notesankify-output"),
+		OutputDir:  outputDir,
 		Dimensions: gui.dimensions,
 		ProcessingOptions: pdf.ProcessingOptions{
 			CheckDimensions: gui.processingMode == ModeOnlyDimensions || gui.processingMode == ModeBoth,
@@ -371,6 +398,8 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 	gui.log.Info("- Cards Added: %d", report.AddedCount)
 	gui.log.Info("- Cards Skipped: %d", report.SkippedCount)
 	gui.log.Info("- Time Taken: %v", report.TimeTaken())
+	gui.log.Info("- Output directory: %s", gui.outputDirEntry.Text)
+
 	gui.log.Info("- Log file saved to: %s\n\n\n\n\n\n", gui.logFileName)
 
 	// If there were skipped cards, log them too
@@ -390,13 +419,15 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 			"Total Flashcards: %d\n"+
 			"Cards Added: %d\n"+
 			"Cards Skipped: %d\n"+
-			"Time Taken: %v\n\n"+
+			"Time Taken: %v\n"+
+			"Output directory: %s\n\n"+
 			"Log file saved to: %s",
 		report.ProcessedPDFs,
 		report.TotalFlashcards,
 		report.AddedCount,
 		report.SkippedCount,
 		report.TimeTaken(),
+		gui.outputDirEntry.Text,
 		gui.logFileName,
 	)
 
@@ -453,7 +484,7 @@ func setupLogging() (*logger.Logger, string, error) {
 
 func (gui *NotesAnkifyGUI) handleModeChange(selected string) {
 	switch selected {
-	case "Pages with Both Markers and Matching Dimensions":
+	case "Pages with QUESTION/ANSWER Markers and Matching Dimensions":
 		gui.processingMode = ModeBoth
 		gui.dimContainer.Show()
 	case "Only Pages with QUESTION/ANSWER Markers":
