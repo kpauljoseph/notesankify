@@ -71,6 +71,10 @@ func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 
 	notesankifyApp := app.New()
 	window := notesankifyApp.NewWindow("NotesAnkify")
+	if bundledIcon, err := fyne.LoadResourceFromPath("assets/icons/png/icon-128.png"); err == nil {
+		notesankifyApp.SetIcon(bundledIcon)
+		window.SetIcon(bundledIcon)
+	}
 
 	dimensions := models.PageDimensions{
 		Width:  utils.GOODNOTES_STANDARD_FLASHCARD_WIDTH,
@@ -384,12 +388,12 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 
 	processingCompleteBanner := `
 +------------------------------------------------------------------------------+
-|                           PROCESSING COMPLETE                                  |
+|                           PROCESSING COMPLETE                                |
 +------------------------------------------------------------------------------+`
 
 	skippedCardsBanner := `
 +------------------------------------------------------------------------------+
-|                            SKIPPED CARDS                                      |
+|                            SKIPPED CARDS                                     |
 +------------------------------------------------------------------------------+`
 
 	gui.log.Info("\n%s\n", processingCompleteBanner)

@@ -32,3 +32,23 @@ vendor/
 
 # Output files
 flashcards
+
+# Logs
+/notesankify-logs/
+*.log
+
+# Build outputs
+/bin/
+/build/
+/dist/
+
+# Generated app bundles
+*.app
+*.exe
+*.AppImage
+
+# Generated icons
+/assets/icons/png/
+/assets/icons/icon.iconset/
+/assets/icons/icon.icns
+/assets/icons/icon.ico

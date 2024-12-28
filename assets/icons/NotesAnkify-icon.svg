@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <!-- Neo-Brutalism style with bold colors and offset shadows -->
+
+    <!-- Offset shadow -->
+    <rect x="24" y="24" width="472" height="472" rx="100"
+          fill="#000000"/>
+
+    <!-- Main background -->
+    <rect x="0" y="0" width="472" height="472" rx="100"
+          fill="#FF6B6B" stroke="#000000" stroke-width="8"/>
+
+    <!-- Rounded 'N' with bold stroke -->
+    <path d="M118 374V118c0-12 9.8-20 20-20h24c8 0 15 4 19 10l128 192V118c0-12 9.8-20 20-20h24c12 0 20 8 20 20v256c0 12-9.8 20-20 20h-24c-8 0-15-4-19-10L182 172v202c0 12-9.8 20-20 20h-24c-12 0-20-8-20-20z"
+          fill="white" stroke="#000000" stroke-width="8"/>
+
+    <!-- Cards stack with brutalist shadows -->
+    <g transform="translate(246, 246) rotate(-15) translate(-246, -246)">
+        <rect x="310" y="182" width="128" height="96" rx="8"
+              fill="#FFE066" stroke="#000000" stroke-width="4"/>
+    </g>
+
+    <g transform="translate(246, 246) rotate(-5) translate(-246, -246)">
+        <rect x="310" y="182" width="128" height="96" rx="8"
+              fill="#4ECDC4" stroke="#000000" stroke-width="4"/>
+    </g>
+
+    <rect x="310" y="182" width="128" height="96" rx="8"
+          fill="white" stroke="#000000" stroke-width="4"/>
+</svg>
