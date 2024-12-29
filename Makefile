@@ -21,52 +21,46 @@ LINUX_DIST_DIR = $(DIST_DIR)/linux
 
 GOBUILD=go build -v -ldflags="-s -w"
 
+install-tools:
+	@echo "Installing fyne-cross..."
+	go install github.com/fyne-io/fyne-cross@latest
+
 build:
 	mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
 	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
 darwin-app: icons
-	@echo "Building macOS app..."
-	fyne version
-	mkdir -p $(DARWIN_DIST_DIR)
-	cd $(DARWIN_DIST_DIR) && fyne package \
-		-os darwin \
-		-icon "../../assets/icons/icon.icns" \
+	@echo "Building MacOS app..."
+	fyne-cross darwin \
+		-arch=amd64,arm64 \
+		-icon ./assets/icons/icon.icns \
 		-name "$(APP_NAME)" \
-		-appID "$(BUNDLE_ID)" \
-		--sourceDir "../../$(GUI_SRC_DIR)" \
-		-release
+		--app-id "$(BUNDLE_ID)" \
+		-output "$(APP_NAME)" \
+		$(GUI_SRC_DIR)
 
 windows-app: icons
 	@echo "Building Windows app..."
-	fyne version
-	mkdir -p $(WINDOWS_DIST_DIR)
-	cd $(WINDOWS_DIST_DIR) && fyne package \
-		-os windows \
-		-icon "../../assets/icons/icon.ico" \
+	fyne-cross windows \
+		-arch=amd64,arm64 \
+		-icon ./assets/icons/icon.ico \
 		-name "$(APP_NAME)" \
-		-appID "$(BUNDLE_ID)" \
-		--sourceDir "../../$(GUI_SRC_DIR)" \
-		-release
+		--app-id "$(BUNDLE_ID)" \
+		-output "$(APP_NAME)" \
+		$(GUI_SRC_DIR)
 
 linux-app: icons
 	@echo "Building Linux app..."
-	fyne version
-	mkdir -p $(LINUX_DIST_DIR)
-	cd $(LINUX_DIST_DIR) && fyne package \
-		-os linux \
-		-icon "../../assets/icons/icon.png" \
+	fyne-cross linux \
+		-arch=amd64 \
+		-icon ./assets/icons/png/icon-512.png \
 		-name "$(APP_NAME)" \
-		-appID "$(BUNDLE_ID)" \
-		--sourceDir "../../$(GUI_SRC_DIR)" \
-		-release
+		--app-id "$(BUNDLE_ID)" \
+		-output "$(APP_NAME)" \
+		$(GUI_SRC_DIR)
 
 package-all: clean darwin-app windows-app linux-app
-	cd $(DIST_DIR) && \
-	zip -r NotesAnkify-$(VERSION)-darwin.zip darwin && \
-	zip -r NotesAnkify-$(VERSION)-windows.zip windows && \
-	tar czf NotesAnkify-$(VERSION)-linux.tar.gz linux
 
 test:
 	$(GINKGO) -r -v --trace --show-node-events --cover -coverprofile=$(COVERAGE_FILE) ./...
@@ -79,16 +73,13 @@ lint:
 
 check: lint test
 
-clean:
+clean: clean-icons
 	rm -rf $(BUILD_DIR)
 	rm -rf $(DIST_DIR)
 	rm -f $(COVERAGE_FILE)
 	go clean -testcache
 	find . -type f -name '*.test' -delete
-	rm -rf assets/icons/png
-	rm -rf $(ICON_SET)
-	rm -f assets/icons/icon.icns
-	rm -rf $(APP_NAME).app
+	rm -rf ./fyne-cross
 
 run:
 	go run cmd/notesankify/main.go
@@ -122,5 +113,5 @@ icons:
 clean-icons:
 	rm -rf assets/icons/png
 	rm -rf assets/icons/icon.iconset
-	rm -f assets/icons/icon.ico
-	rm -f assets/icons/icon.icns
+	rm -rf assets/icons/icon.ico
+	rm -rf assets/icons/icon.icns
