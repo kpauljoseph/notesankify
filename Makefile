@@ -73,7 +73,7 @@ linux-app:
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean icons bundle-assets darwin-app windows-app linux-app
+package-all: clean bundle-assets darwin-app windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
@@ -90,11 +90,10 @@ lint:
 
 check: lint test
 
-clean: clean-icons
+clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(DIST_DIR)
 	rm -f $(COVERAGE_FILE)
-	rm -rf $(ASSETS_BUNDLE_DIR)
 	go clean -testcache
 	find . -type f -name '*.test' -delete
 	rm -rf ./fyne-cross
@@ -110,7 +109,8 @@ deps:
 	go mod tidy
 	go mod verify
 
-icons:
+# Generate locally and push to main before release.
+icons: clean-icons
 	@echo "Generating icons..."
 	mkdir -p $(ICON_SET)
 	mkdir -p assets/icons/png
@@ -133,3 +133,4 @@ clean-icons:
 	rm -rf assets/icons/icon.iconset
 	rm -rf assets/icons/icon.ico
 	rm -rf assets/icons/icon.icns
+	rm -rf $(ASSETS_BUNDLE_DIR)

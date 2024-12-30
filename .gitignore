@@ -47,10 +47,3 @@ flashcards
 *.exe
 *.AppImage
 fyne-cross/
-
-# Generated icons
-/assets/icons/png/
-/assets/icons/icon.iconset/
-/assets/icons/icon.icns
-/assets/icons/icon.ico
-/assets/bundle
