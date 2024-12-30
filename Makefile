@@ -1,5 +1,14 @@
 .PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app
 
+VERSION ?= $(shell git describe --tags --always --dirty)
+COMMIT  ?= $(shell git rev-parse --short HEAD)
+BUILD_TIME ?= $(shell date -u '+%Y-%m-%d %H:%M:%S')
+
+LDFLAGS := -ldflags="\
+    -X 'github.com/kpauljoseph/notesankify/pkg/version.Version=$(VERSION)' \
+    -X 'github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=$(COMMIT)' \
+    -X 'github.com/kpauljoseph/notesankify/pkg/version.BuildTime=$(BUILD_TIME)'"
+
 CLI_BINARY_NAME=notesankify
 GUI_BINARY_NAME=notesankify-gui
 BUILD_DIR=bin
@@ -14,6 +23,7 @@ GUI_SRC_DIR=cmd/gui
 ICON_SOURCE = assets/icons/NotesAnkify-icon.svg
 ICON_SET = assets/icons/icon.iconset
 ICONS_NEEDED = 16 32 64 128 256 512 1024
+ASSETS_BUNDLE_DIR = assets/bundle
 
 DARWIN_DIST_DIR = $(DIST_DIR)/darwin
 WINDOWS_DIST_DIR = $(DIST_DIR)/windows
@@ -25,15 +35,16 @@ install-tools:
 	@echo "Installing fyne-cross..."
 	go install github.com/fyne-io/fyne-cross@latest
 
-build:
+build: icons bundle-assets
 	mkdir -p $(BUILD_DIR)
-	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
-	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
 darwin-app: icons
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
 		-arch=amd64,arm64 \
+		$(LDFLAGS) \
 		-icon ./assets/icons/icon.icns \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
@@ -44,6 +55,7 @@ windows-app: icons
 	@echo "Building Windows app..."
 	fyne-cross windows \
 		-arch=amd64,arm64 \
+		$(LDFLAGS) \
 		-icon ./assets/icons/icon.ico \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
@@ -54,13 +66,18 @@ linux-app: icons
 	@echo "Building Linux app..."
 	fyne-cross linux \
 		-arch=amd64 \
+		$(LDFLAGS) \
 		-icon ./assets/icons/png/icon-512.png \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean darwin-app windows-app linux-app
+package-all: clean bundle-assets darwin-app windows-app linux-app
+
+bundle-assets:
+	mkdir -p $(ASSETS_BUNDLE_DIR)
+	fyne bundle -o $(ASSETS_BUNDLE_DIR)/bundled.go --package bundle --prefix Resource assets/icons/png/icon-256.png
 
 test:
 	$(GINKGO) -r -v --trace --show-node-events --cover -coverprofile=$(COVERAGE_FILE) ./...
@@ -77,6 +94,7 @@ clean: clean-icons
 	rm -rf $(BUILD_DIR)
 	rm -rf $(DIST_DIR)
 	rm -f $(COVERAGE_FILE)
+	rm -rf $(ASSETS_BUNDLE_DIR)
 	go clean -testcache
 	find . -type f -name '*.test' -delete
 	rm -rf ./fyne-cross

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/kpauljoseph/notesankify/internal/anki"
 	"github.com/kpauljoseph/notesankify/internal/config"
 	"github.com/kpauljoseph/notesankify/internal/pdf"
@@ -10,6 +11,7 @@ import (
 	"github.com/kpauljoseph/notesankify/pkg/logger"
 	"github.com/kpauljoseph/notesankify/pkg/models"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
+	"github.com/kpauljoseph/notesankify/pkg/version"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,8 +28,14 @@ func main() {
 	height := flag.Float64("height", 0.0, "custom flashcard height (defaults to Goodnotes standard if not specified)")
 	disableMarkerCheck := flag.Bool("no-markers", false, "disable checking for QUESTION/ANSWER markers in pages")
 	disableDimensionCheck := flag.Bool("no-dimensions", false, "disable checking page dimensions")
+	versionFlag := flag.Bool("version", false, "Print version information")
 
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.GetDetailedVersionInfo())
+		os.Exit(0)
+	}
 
 	report := &anki.ProcessingReport{
 		StartTime: time.Now(),

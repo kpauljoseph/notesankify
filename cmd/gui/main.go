@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/kpauljoseph/notesankify/assets/bundle"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
+	"github.com/kpauljoseph/notesankify/pkg/version"
 	"io"
 	"os"
 	"os/exec"
@@ -71,7 +74,7 @@ func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 
 	notesankifyApp := app.New()
 	window := notesankifyApp.NewWindow("NotesAnkify")
-	if bundledIcon, err := fyne.LoadResourceFromPath("assets/icons/png/icon-128.png"); err == nil {
+	if bundledIcon := bundle.ResourceIcon256Png; err == nil {
 		notesankifyApp.SetIcon(bundledIcon)
 		window.SetIcon(bundledIcon)
 	}
@@ -102,6 +105,20 @@ func (gui *NotesAnkifyGUI) resetDimensions() {
 }
 
 func (gui *NotesAnkifyGUI) setupUI() {
+	// Version
+	mainMenu := fyne.NewMainMenu(
+		fyne.NewMenu("Help",
+			fyne.NewMenuItem("About", func() {
+				dialog.ShowInformation(
+					"About NotesAnkify",
+					version.GetDetailedVersionInfo(),
+					gui.window,
+				)
+			}),
+		),
+	)
+	gui.window.SetMainMenu(mainMenu)
+
 	// Directory selection
 	gui.dirEntry = widget.NewEntry()
 	gui.dirEntry.SetPlaceHolder("Select PDF Directory")
@@ -109,14 +126,11 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	browseDirBtn := widget.NewButton("Browse", gui.handleBrowse)
 	browseDirBtn.Importance = widget.HighImportance
 
-	dirContainer := container.NewBorder(
-		nil, nil, nil, browseDirBtn,
-		gui.dirEntry,
-	)
+	dirContainer := container.NewBorder(nil, nil, nil, browseDirBtn, gui.dirEntry)
 
 	// Root deck name
 	gui.rootDeckEntry = widget.NewEntry()
-	gui.rootDeckEntry.SetPlaceHolder("Root Deck Name")
+	gui.rootDeckEntry.SetPlaceHolder("Root Deck Name (Optional)")
 
 	// Processing mode selection
 	gui.modeSelect = widget.NewSelect(
@@ -140,16 +154,12 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	resetDimensionsBtn := widget.NewButton("Reset to Default", gui.resetDimensions)
 
 	dimensionsForm := container.NewGridWithColumns(2,
-		widget.NewLabel("Width:"),
-		gui.widthEntry,
-		widget.NewLabel("Height:"),
-		gui.heightEntry,
+		container.NewBorder(nil, nil, widget.NewLabel("Width:"), nil, gui.widthEntry),
+		container.NewBorder(nil, nil, widget.NewLabel("Height:"), nil, gui.heightEntry),
 	)
 
-	gui.dimContainer = container.NewHBox(
-		dimensionsForm,
-		resetDimensionsBtn,
-	)
+	gui.dimContainer = container.NewBorder(nil, nil, nil, resetDimensionsBtn,
+		dimensionsForm)
 
 	// Additional settings
 	// Optional output directory
@@ -197,24 +207,23 @@ func (gui *NotesAnkifyGUI) setupUI() {
 			"Example: 'MyStudies' will create 'MyStudies::Math::Calculus'",
 		container.NewVBox(gui.rootDeckEntry))
 
+	processingInfoText := widget.NewRichTextFromMarkdown(
+		"• **Pages with QUESTION/ANSWER Markers and Matching Dimensions**:\n\n" +
+			"	The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n\n\n\n" +
+			"• **Only Pages with QUESTION/ANSWER Markers**:\n\n" +
+			"	The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n\n\n\n" +
+			"• **Only Pages Matching Dimensions**:\n\n " +
+			"	The Flashcard page must match specified dimensions\n\n\n\n" +
+			"• **Process All Pages**:\n\n " +
+			"	Split every PDF page into two halves top->question bottom->answer",
+	)
+	processingInfoText.Wrapping = fyne.TextWrapWord
+
 	processingInfo := gui.createInfoSection("Processing Mode",
 		"Choose how to identify flashcards in your PDF files:",
-		container.NewVBox(
-			container.NewVBox(
-				widget.NewRichTextFromMarkdown(
-					"• **Pages with QUESTION/ANSWER Markers and Matching Dimensions**:\n\n"+
-						"	The Flashcard page must have QUESTION/ANSWER markers and match given dimensions\n\n\n\n"+
-						"• **Only Pages with QUESTION/ANSWER Markers**:\n\n"+
-						"	The Flashcard page must have uppercase QUESTION/ANSWER text in the page\n\n\n\n"+
-						"• **Only Pages Matching Dimensions**:\n\n "+
-						"	The Flashcard page must match specified dimensions\n\n\n\n"+
-						"• **Process All Pages**:\n\n "+
-						"	Split every PDF page into two halves top->question bottom->answer",
-				),
-			),
-			gui.modeSelect,
-			gui.dimContainer,
-		))
+		container.NewBorder(
+			container.NewBorder(nil, nil, nil, nil, processingInfoText), container.NewVBox(gui.modeSelect, gui.dimContainer), nil, nil, nil),
+	)
 
 	settingsInfo := gui.createInfoSection("Additional Settings",
 		"Enable verbose logging to see detailed processing information.",
@@ -225,13 +234,15 @@ func (gui *NotesAnkifyGUI) setupUI() {
 			"Useful for debugging or manual inspection of processed cards.",
 		container.NewVBox(outputDirContainer))
 
+	// Final window layout
 	content := container.NewVBox(
-		widget.NewLabelWithStyle("NotesAnkify", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
-		pdfSourceInfo,
-		deckInfo,
-		processingInfo,
-		outputDirInfo,
-		settingsInfo,
+		container.NewBorder(
+			nil, nil, nil,
+			gui.createHeader(),
+			container.NewVBox(pdfSourceInfo, deckInfo, processingInfo)),
+		container.NewBorder(nil, nil, nil,
+			container.NewBorder(nil, nil, nil, nil, settingsInfo),
+			container.NewBorder(nil, nil, nil, nil, outputDirInfo)),
 		processBtn,
 		gui.progress,
 		gui.status,
@@ -550,6 +561,41 @@ func (gui *NotesAnkifyGUI) processFiles() {
 
 	report.EndTime = time.Now()
 	gui.showCompletionDialog(report)
+}
+
+func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
+	appIcon := canvas.NewImageFromResource(bundle.ResourceIcon256Png)
+	appIcon.FillMode = canvas.ImageFillOriginal
+
+	titleLabel := widget.NewLabelWithStyle(
+		"NotesAnkify",
+		fyne.TextAlignCenter,
+		fyne.TextStyle{Bold: true},
+	)
+
+	versionLabel := widget.NewLabelWithStyle(
+		"Version: v"+version.Version,
+		fyne.TextAlignCenter,
+		fyne.TextStyle{Italic: true},
+	)
+
+	commitLabel := widget.NewLabelWithStyle(
+		"CommitSHA: "+version.CommitSHA,
+		fyne.TextAlignCenter,
+		fyne.TextStyle{Italic: true},
+	)
+
+	textContainer := container.NewVBox(
+		titleLabel,
+		versionLabel,
+		commitLabel,
+	)
+
+	header := container.NewBorder(nil, container.NewPadded(textContainer), nil, nil, appIcon)
+
+	return container.NewCenter(
+		container.NewPadded(header),
+	)
 }
 
 func (gui *NotesAnkifyGUI) Run() {
