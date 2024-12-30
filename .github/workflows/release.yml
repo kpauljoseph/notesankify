@@ -46,7 +46,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y imagemagick gcc libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y imagemagick-6.q16 gcc libgl1-mesa-dev xorg-dev
           go install github.com/fyne-io/fyne-cross@latest
 
       # Generate version.json for the website
@@ -67,12 +67,6 @@ jobs:
               }
           }
           EOF
-
-      - name: Build Icons
-        run: make icons
-
-      - name: Bundle Assets
-        run: make bundle-assets
 
       - name: Build All Platforms
         run: make package-all
