@@ -40,7 +40,7 @@ build: icons bundle-assets
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
-darwin-app: icons
+darwin-app:
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
 		-arch=amd64,arm64 \
@@ -51,7 +51,7 @@ darwin-app: icons
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-windows-app: icons
+windows-app:
 	@echo "Building Windows app..."
 	fyne-cross windows \
 		-arch=amd64,arm64 \
@@ -62,7 +62,7 @@ windows-app: icons
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-linux-app: icons
+linux-app:
 	@echo "Building Linux app..."
 	fyne-cross linux \
 		-arch=amd64 \
@@ -73,7 +73,7 @@ linux-app: icons
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean bundle-assets darwin-app windows-app linux-app
+package-all: clean icons bundle-assets darwin-app windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)

@@ -1,0 +1,139 @@
+name: Release NotesAnkify
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: NotesAnkify ${{ github.ref }}
+          draft: true
+          prerelease: false
+          body: |
+            Release Notes:
+            - TBD (will be updated)
+
+  build:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick gcc libgl1-mesa-dev xorg-dev
+          go install github.com/fyne-io/fyne-cross@latest
+
+      # Generate version.json for the website
+      - name: Generate version.json
+        run: |
+          VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+          cat > version.json << EOF
+          {
+              "latest_version": "$VERSION",
+              "min_version": "$VERSION",
+              "download_url": "https://notesankify.github.io/download",
+              "update_message": "New version $VERSION is available with improvements and bug fixes!",
+              "force_update": false,
+              "platform_downloads": {
+                  "windows": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-amd64.exe",
+                  "darwin": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-darwin-universal.zip",
+                  "linux": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-linux-amd64.tar.gz"
+              }
+          }
+          EOF
+
+      - name: Build Icons
+        run: make icons
+
+      - name: Bundle Assets
+        run: make bundle-assets
+
+      - name: Build All Platforms
+        run: make package-all
+
+      # Prepare release artifacts
+      - name: Prepare macOS Universal Build
+        run: |
+          mkdir -p universal-darwin
+          cp -r fyne-cross/dist/darwin-amd64/NotesAnkify.app universal-darwin/
+          cp -r fyne-cross/dist/darwin-arm64/NotesAnkify.app/Contents/MacOS/gui universal-darwin/NotesAnkify.app/Contents/MacOS/gui-arm64
+          cd universal-darwin/NotesAnkify.app/Contents/MacOS
+          lipo -create gui gui-arm64 -output gui
+          rm gui-arm64
+          cd ../../../
+          zip -r NotesAnkify-darwin-universal.zip NotesAnkify.app
+
+      - name: Prepare Windows Build
+        run: |
+          cp fyne-cross/dist/windows-amd64/gui.exe NotesAnkify-windows-amd64.exe
+
+      # Upload the version.json to your GitHub Pages repo
+      - name: Deploy version.json
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository-name: kpauljoseph/notesankify.github.io
+          branch: main
+          folder: .
+          target-folder: .
+          files: version.json
+
+      # Upload Release Assets
+      - name: Upload macOS Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./NotesAnkify-darwin-universal.zip
+          asset_name: NotesAnkify-darwin-universal.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./NotesAnkify-windows-amd64.exe
+          asset_name: NotesAnkify-windows-amd64.exe
+          asset_content_type: application/octet-stream
+
+  update-release-notes:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Update release notes from CHANGELOG.md
+      - name: Update Release Notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          NOTES=$(awk "/## \[$VERSION\]/{p=1;print;next} /## \[/{p=0} p" CHANGELOG.md)
+          gh release edit $TAG -n "$NOTES"

@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/assets/bundle"
+	"github.com/kpauljoseph/notesankify/pkg/updater"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"github.com/kpauljoseph/notesankify/pkg/version"
 	"io"
@@ -40,13 +41,14 @@ const (
 
 type NotesAnkifyGUI struct {
 	// Core components
-	window      fyne.Window
-	log         *logger.Logger
-	processor   *pdf.Processor
-	scanner     *scanner.DirectoryScanner
-	ankiService *anki.Service
-	mutex       sync.Mutex
-	logFileName string
+	window        fyne.Window
+	log           *logger.Logger
+	processor     *pdf.Processor
+	scanner       *scanner.DirectoryScanner
+	ankiService   *anki.Service
+	mutex         sync.Mutex
+	logFileName   string
+	updateChecker *updater.Checker
 
 	// Processing settings
 	processingMode ProcessingMode
@@ -92,6 +94,7 @@ func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 		logFileName:    logFileName,
 		dimensions:     dimensions,
 		processingMode: ModeBoth, // Start with most strict mode
+		updateChecker:  updater.NewChecker(log),
 	}
 }
 
@@ -597,6 +600,94 @@ func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
 		container.NewPadded(header),
 	)
 }
+func (gui *NotesAnkifyGUI) startUpdateChecker() {
+	// Check immediately on startup
+	go func() {
+		time.Sleep(5 * time.Second) // Wait a bit after startup
+		gui.checkForUpdates()
+	}()
+
+	// Then check periodically
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			gui.checkForUpdates()
+		}
+	}()
+}
+
+func (gui *NotesAnkifyGUI) checkForUpdates() {
+	info, err := gui.updateChecker.CheckForUpdates()
+	if err != nil {
+		gui.log.Debug("Failed to check for updates: %v", err)
+		return
+	}
+
+	if info != nil && info.IsAvailable {
+		gui.showUpdateDialog(info)
+	}
+}
+
+func (gui *NotesAnkifyGUI) showUpdateDialog(info *updater.UpdateInfo) {
+	message := fmt.Sprintf(
+		"A new version of NotesAnkify is available!\n\n"+
+			"Current version: %s\n"+
+			"Latest version: %s\n\n"+
+			"%s",
+		info.CurrentVersion,
+		info.LatestVersion,
+		info.UpdateMessage,
+	)
+
+	// Create update dialog content
+	content := container.NewVBox(
+		widget.NewRichTextFromMarkdown(message),
+		container.NewHBox(
+			widget.NewButton("Download Update", func() {
+				gui.openBrowser(info.DownloadURL)
+			}),
+		),
+	)
+
+	var d dialog.Dialog
+	if info.ForceUpdate {
+		message = "This update is required. Please update to continue using NotesAnkify.\n\n" + message
+		d = dialog.NewCustom(
+			"Required Update Available",
+			"", // No dismiss button for forced updates
+			content,
+			gui.window,
+		)
+	} else {
+		d = dialog.NewCustom(
+			"Update Available",
+			"Later",
+			content,
+			gui.window,
+		)
+	}
+
+	d.Resize(fyne.NewSize(500, 300))
+	d.Show()
+}
+
+func (gui *NotesAnkifyGUI) openBrowser(url string) {
+	var err error
+	switch runtime.GOOS {
+	case "windows":
+		err = exec.Command("cmd", "/c", "start", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = exec.Command("xdg-open", url).Start()
+	}
+
+	if err != nil {
+		dialog.ShowError(fmt.Errorf("Failed to open download page: %v", err), gui.window)
+	}
+}
 
 func (gui *NotesAnkifyGUI) Run() {
 	gui.setupUI()
@@ -605,5 +696,6 @@ func (gui *NotesAnkifyGUI) Run() {
 
 func main() {
 	gui := NewNotesAnkifyGUI()
+	gui.startUpdateChecker()
 	gui.Run()
 }

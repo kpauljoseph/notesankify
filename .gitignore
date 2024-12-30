@@ -46,6 +46,7 @@ flashcards
 *.app
 *.exe
 *.AppImage
+fyne-cross/
 
 # Generated icons
 /assets/icons/png/
