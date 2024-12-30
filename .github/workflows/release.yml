@@ -46,17 +46,13 @@ jobs:
       - name: Install Dependencies
         run: |
           brew install gcc
-          brew install docker
-          brew install colima
           go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest
 
-      - name: Start Docker with Colima
-        run: |
-          colima start
-          # Wait for Docker daemon to be ready
-          sleep 10
-          docker ps
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+        with:
+          install: true
 
       - name: Bundle Assets
         run: make bundle-assets
