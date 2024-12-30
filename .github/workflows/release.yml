@@ -45,8 +45,21 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          brew install gcc
+          brew install docker
+          brew install colima
           go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Start Docker with Colima
+        run: |
+          colima start
+          # Wait for Docker daemon to be ready
+          sleep 10
+          docker ps
+
+      - name: Bundle Assets
+        run: make bundle-assets
 
       - name: Build macOS App
         run: |
@@ -87,10 +100,18 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
       - name: Install Dependencies
         run: |
           go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Bundle Assets
+        run: make bundle-assets
 
       - name: Build Windows App
         run: make windows-app
