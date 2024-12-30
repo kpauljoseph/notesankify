@@ -46,7 +46,8 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y imagemagick-6.q16 gcc libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y imagemagick make gcc libgl1-mesa-dev xorg-dev
+          sudo ln -s /usr/bin/convert /usr/bin/magick
           go install github.com/fyne-io/fyne-cross@latest
 
       # Generate version.json for the website
