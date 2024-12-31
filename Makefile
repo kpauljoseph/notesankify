@@ -22,7 +22,7 @@ ROOT_DIR := $(shell pwd)
 BUILD_DIR=$(ROOT_DIR)/bin
 DIST_DIR=$(ROOT_DIR)/dist
 GUI_SRC_DIR := $(ROOT_DIR)/cmd/gui
-ASSETS_ICONS_DIR=$(ROOT_DIR)/assets/icons
+ASSETS_ICONS_DIR = $(ROOT_DIR)/assets/icons
 ICON_SOURCE = $(ROOT_DIR)/assets/icons/NotesAnkify-icon.svg
 ICON_SET = $(ROOT_DIR)/assets/icons/icon.iconset
 ICONS_NEEDED = 16 32 64 128 256 512 1024
@@ -83,7 +83,7 @@ package-all: clean bundle-assets darwin-app windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
-	fyne bundle -o $(ASSETS_BUNDLE_DIR)/bundled.go --package bundle --prefix Resource assets/icons/png/icon-256.png
+	fyne bundle -o $(ASSETS_BUNDLE_DIR)/bundled.go --package bundle --prefix Resource $(ASSETS_ICONS_DIR)/png/icon-256.png
 
 test:
 	$(GINKGO) -r -v --trace --show-node-events --cover -coverprofile=$(COVERAGE_FILE) ./...
