@@ -50,12 +50,12 @@ jobs:
           go install fyne.io/fyne/v2/cmd/fyne@latest ||
           go get fyne.io/fyne/v2/cmd/fyne@latest
 
-      - name: Install Podman
-        if: ${{ runner.os == 'macos' }}
-        run: |
-          brew install podman
-          podman machine init
-          podman machine start
+#      - name: Install Podman
+#        if: ${{ runner.os == 'macos' }}
+#        run: |
+#          brew install podman
+#          podman machine init
+#          podman machine start
 
       - name: Bundle Assets
         run: make bundle-assets
@@ -63,8 +63,8 @@ jobs:
       - name: Build macOS App
         run: |
           make darwin-app
-          cd fyne-cross/dist/darwin-amd64 && zip -r NotesAnkify-darwin-amd64.zip NotesAnkify.app
-          cd ../darwin-arm64 && zip -r NotesAnkify-darwin-arm64.zip NotesAnkify.app
+#          cd fyne-cross/dist/darwin-amd64 && zip -r NotesAnkify-darwin-amd64.zip NotesAnkify.app
+#          cd ../darwin-arm64 && zip -r NotesAnkify-darwin-arm64.zip NotesAnkify.app
 
       - name: Upload macOS AMD64 Asset
         uses: actions/upload-release-asset@v1
@@ -72,7 +72,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./fyne-cross/dist/darwin-amd64/NotesAnkify-darwin-amd64.zip
+          asset_path: ./dist/darwin-amd64/NotesAnkify-darwin-amd64.zip
           asset_name: NotesAnkify-darwin-amd64.zip
           asset_content_type: application/zip
 
@@ -82,7 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./fyne-cross/dist/darwin-arm64/NotesAnkify-darwin-arm64.zip
+          asset_path: ./dist/darwin-arm64/NotesAnkify-darwin-arm64.zip
           asset_name: NotesAnkify-darwin-arm64.zip
           asset_content_type: application/zip
 
