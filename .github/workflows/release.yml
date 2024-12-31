@@ -117,7 +117,7 @@ jobs:
       - name: Install Dependencies
         run: >
           pacman -Syu &&
-          pacman --noconfirm -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-mpv
+          pacman --noconfirm -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-mpv mingw-w64-x86_64-go
 
       - name: Install Dependencies
         run: |
@@ -128,6 +128,13 @@ jobs:
         run: |
           echo "Current directory: $PWD"
           which fyne
+          gcc -v
+
+      - name: Fix gcc
+        run: |
+          pacman -R gcc
+          pacman -S mingw-w64-x86_64-gcc
+          export PATH=$PATH:/mingw64/bin/
 
       - name: Bundle Assets
         run: make bundle-assets
