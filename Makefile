@@ -182,7 +182,7 @@ package-windows-arm64: clean create-dirs
 	cd $(WINDOWS_ARM64_DIR) && zip -r $(APP_NAME)-windows-arm64.zip $(APP_NAME).app
 
 package-windows-amd64: clean create-dirs
-	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=/usr/bin/x86_64-w64-mingw32-gcc CGO_LDFLAGS=-static-libgcc -static \
+	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=/usr/bin/x86_64-w64-mingw32-gcc CGO_LDFLAGS=-static-libgcc \
 	fyne package -os windows \
 	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
 	-name "$(APP_NAME)" \
