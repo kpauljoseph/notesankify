@@ -114,6 +114,13 @@ jobs:
 #        uses: egor-tensin/setup-mingw@v2
 #        with:
 #          platform: x64
+
+      - name: Fix gcc
+        run: |
+          pacman -R gcc
+          pacman -S mingw-w64-x86_64-gcc
+          export PATH=$PATH:/mingw64/bin/
+
       - name: Install Dependencies
         run: >
           pacman -Syu &&
@@ -130,11 +137,7 @@ jobs:
           which fyne
           gcc -v
 
-      - name: Fix gcc
-        run: |
-          pacman -R gcc
-          pacman -S mingw-w64-x86_64-gcc
-          export PATH=$PATH:/mingw64/bin/
+
 
       - name: Bundle Assets
         run: make bundle-assets
