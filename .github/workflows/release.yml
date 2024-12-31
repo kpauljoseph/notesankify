@@ -34,7 +34,7 @@ jobs:
     needs: create-release
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -89,7 +89,7 @@ jobs:
     needs: create-release
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -107,6 +107,13 @@ jobs:
         run: |
           go install fyne.io/fyne/v2/cmd/fyne@latest ||
           go get fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Show Environment
+        run: |
+          echo "Current directory: $PWD"
+          echo "Files in directory:"
+          ls -la
+          which fyne
 
       - name: Bundle Assets
         run: make bundle-assets
