@@ -173,7 +173,7 @@ package-macos-amd64: clean create-dirs
 	cd $(DARWIN_AMD64_DIR) && zip -r $(APP_NAME)-darwin-amd64.zip $(APP_NAME).app
 
 package-windows-arm64: clean create-dirs
-	cd $(WINDOWS_ARM64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=arm64 \
+	cd $(WINDOWS_ARM64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=arm64 CC=/usr/bin/x86_64-w64-mingw32-gcc \
 	fyne package -os windows \
 	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
 	-name "$(APP_NAME)" \
@@ -182,7 +182,7 @@ package-windows-arm64: clean create-dirs
 	cd $(WINDOWS_ARM64_DIR) && zip -r $(APP_NAME)-windows-arm64.zip $(APP_NAME).app
 
 package-windows-amd64: clean create-dirs
-	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=/usr/bin/x86_64-w64-mingw32-gcc CGO_LDFLAGS=-static-libgcc -static \
 	fyne package -os windows \
 	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
 	-name "$(APP_NAME)" \
