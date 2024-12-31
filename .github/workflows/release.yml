@@ -88,7 +88,19 @@ jobs:
   build-windows:
     needs: create-release
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          path-type: inherit
+          update: true
+          install: >-
+            make
+            wget
+            zip
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -102,6 +114,10 @@ jobs:
 #        uses: egor-tensin/setup-mingw@v2
 #        with:
 #          platform: x64
+      - name: Install Dependencies
+        run: >
+          pacman -Syu &&
+          pacman --noconfirm -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-mpv
 
       - name: Install Dependencies
         run: |
