@@ -46,7 +46,6 @@ jobs:
       - name: Install Dependencies
         run: |
           brew install gcc
-          go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest ||
           go get fyne.io/fyne/v2/cmd/fyne@latest
 
@@ -106,7 +105,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          go install fyne.io/fyne/v2/cmd/fyne@latest
+          go install fyne.io/fyne/v2/cmd/fyne@latest ||
+          go get fyne.io/fyne/v2/cmd/fyne@latest
 
       - name: Bundle Assets
         run: make bundle-assets
