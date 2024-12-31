@@ -140,7 +140,9 @@ jobs:
         env:
           CGO_CFLAGS: "-g -O2 -D__USE_MINGW_ANSI_STDIO=1"
           CGO_LDFLAGS: "-static"
-        run: make windows-app
+        run: |
+          go clean -cache
+          make windows-app
 
       - name: Upload Windows Asset AMD64 Asset
         uses: actions/upload-release-asset@v1
