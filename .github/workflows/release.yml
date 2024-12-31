@@ -115,12 +115,6 @@ jobs:
 #        with:
 #          platform: x64
 
-      - name: Fix gcc
-        run: |
-          pacman -R gcc
-          pacman -S mingw-w64-x86_64-gcc
-          export PATH=$PATH:/mingw64/bin/
-
       - name: Install Dependencies
         run: >
           pacman -Syu &&
