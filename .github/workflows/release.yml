@@ -112,7 +112,7 @@ jobs:
         run: |
           echo "Current directory: $PWD"
           echo "Files in directory:"
-          ls -la
+          dir /a
           which fyne
 
       - name: Bundle Assets
