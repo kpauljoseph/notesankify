@@ -47,12 +47,15 @@ jobs:
         run: |
           brew install gcc
           go install github.com/fyne-io/fyne-cross@latest
-          go install fyne.io/fyne/v2/cmd/fyne@latest
+          go install fyne.io/fyne/v2/cmd/fyne@latest ||
+          go get fyne.io/fyne/v2/cmd/fyne@latest
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
-        with:
-          install: true
+      - name: Install Podman
+        if: ${{ runner.os == 'macos' }}
+        run: |
+          brew install podman
+          podman machine init
+          podman machine start
 
       - name: Bundle Assets
         run: make bundle-assets
