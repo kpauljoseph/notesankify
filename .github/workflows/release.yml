@@ -98,8 +98,12 @@ jobs:
           update: true
           install: >-
             make
-            wget
             zip
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-gcc-libs
+            mingw-w64-x86_64-winpthreads-git
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-binutils
 
       - uses: actions/checkout@v4
         with:
@@ -110,33 +114,32 @@ jobs:
         with:
           go-version: '1.21'
 
-#      - name: Set up MinGW
-#        uses: egor-tensin/setup-mingw@v2
-#        with:
-#          platform: x64
-
-      - name: Install Dependencies
-        run: >
-          pacman -Syu &&
-          pacman --noconfirm -S git mingw-w64-x86_64-toolchain mingw-w64-x86_64-mpv mingw-w64-x86_64-go
-
-      - name: Install Dependencies
+      - name: Install Fyne
         run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
           go install fyne.io/fyne/v2/cmd/fyne@latest ||
           go get fyne.io/fyne/v2/cmd/fyne@latest
 
       - name: Show Environment
+        env:
+          CGO_CFLAGS: "-g -O2 -D__USE_MINGW_ANSI_STDIO=1"
+          CGO_LDFLAGS: "-static"
         run: |
           echo "Current directory: $PWD"
+          echo "PATH: $PATH"
           which fyne
           gcc -v
 
-
-
       - name: Bundle Assets
+        env:
+          CGO_CFLAGS: "-g -O2 -D__USE_MINGW_ANSI_STDIO=1"
+          CGO_LDFLAGS: "-static"
         run: make bundle-assets
 
       - name: Build Windows App
+        env:
+          CGO_CFLAGS: "-g -O2 -D__USE_MINGW_ANSI_STDIO=1"
+          CGO_LDFLAGS: "-static"
         run: make windows-app
 
       - name: Upload Windows Asset AMD64 Asset
