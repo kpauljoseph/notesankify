@@ -57,7 +57,9 @@ darwin-app: package-macos-arm64 package-macos-amd64
 #		-output "$(APP_NAME)" \
 #		$(GUI_SRC_DIR)
 
-windows-app: package-windows-arm64 package-windows-amd64
+#windows-app: package-windows-arm64 package-windows-amd64
+windows-app: package-windows-amd64
+
 #	@echo "Building Windows app..."
 #	fyne-cross windows \
 #		-arch=amd64,arm64 \
