@@ -127,8 +127,6 @@ jobs:
       - name: Show Environment
         run: |
           echo "Current directory: $PWD"
-          echo "Files in directory:"
-          dir /a
           which fyne
 
       - name: Bundle Assets
