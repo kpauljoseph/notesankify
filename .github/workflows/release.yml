@@ -99,11 +99,11 @@ jobs:
           install: >-
             make
             zip
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-gcc-libs
-            mingw-w64-x86_64-winpthreads-git
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-binutils
+#            mingw-w64-x86_64-gcc
+#            mingw-w64-x86_64-gcc-libs
+#            mingw-w64-x86_64-winpthreads-git
+#            mingw-w64-x86_64-pkg-config
+#            mingw-w64-x86_64-binutils
 
       - uses: actions/checkout@v4
         with:
@@ -113,6 +113,13 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
+
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+          static: 1
+          cc: 1
 
       - name: Install Fyne
         run: |
