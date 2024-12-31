@@ -30,7 +30,9 @@ ASSETS_BUNDLE_DIR = $(ROOT_DIR)/assets/bundle
 
 DARWIN_ARM64_DIR := $(DIST_DIR)/darwin-arm64
 DARWIN_AMD64_DIR := $(DIST_DIR)/darwin-amd64
+WINDOWS_ARM64_DIR := $(DIST_DIR)/windows-arm64
 WINDOWS_AMD64_DIR := $(DIST_DIR)/windows-amd64
+LINUX_ARM64_DIR := $(DIST_DIR)/linux-arm64
 LINUX_AMD64_DIR := $(DIST_DIR)/linux-amd64
 
 GOBUILD=go build -v -ldflags="-s -w"
@@ -55,16 +57,16 @@ darwin-app: package-macos-arm64 package-macos-amd64
 #		-output "$(APP_NAME)" \
 #		$(GUI_SRC_DIR)
 
-windows-app:
-	@echo "Building Windows app..."
-	fyne-cross windows \
-		-arch=amd64,arm64 \
-		$(LDFLAGS) \
-		-icon ./assets/icons/icon.ico \
-		-name "$(APP_NAME)" \
-		--app-id "$(BUNDLE_ID)" \
-		-output "$(APP_NAME)" \
-		$(GUI_SRC_DIR)
+windows-app: package-windows-arm64 package-windows-amd64
+#	@echo "Building Windows app..."
+#	fyne-cross windows \
+#		-arch=amd64,arm64 \
+#		$(LDFLAGS) \
+#		-icon ./assets/icons/icon.ico \
+#		-name "$(APP_NAME)" \
+#		--app-id "$(BUNDLE_ID)" \
+#		-output "$(APP_NAME)" \
+#		$(GUI_SRC_DIR)
 
 linux-app:
 	@echo "Building Linux app..."
@@ -146,6 +148,7 @@ create-dirs:
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(DARWIN_ARM64_DIR)
 	mkdir -p $(DARWIN_AMD64_DIR)
+	mkdir -p $(WINDOWS_ARM64_DIR)
 	mkdir -p $(WINDOWS_AMD64_DIR)
 	mkdir -p $(LINUX_AMD64_DIR)
 
@@ -167,14 +170,24 @@ package-macos-amd64: clean create-dirs
 	--sourceDir $(GUI_SRC_DIR)
 	cd $(DARWIN_AMD64_DIR) && zip -r $(APP_NAME)-darwin-amd64.zip $(APP_NAME).app
 
-#package-windows:
-#	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
-#	fyne package -os windows \
-#	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
-#	-name "$(APP_NAME)" \
-#	-appID "$(BUNDLE_ID)" \
-#	$(GUI_SRC_DIR)
-#
+package-windows-arm64: clean create-dirs
+	cd $(WINDOWS_ARM64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=arm64 \
+	fyne package -os windows \
+	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
+	-name "$(APP_NAME)" \
+	-appID "$(BUNDLE_ID)" \
+	--sourceDir $(GUI_SRC_DIR)
+	cd $(WINDOWS_ARM64_DIR) && zip -r $(APP_NAME)-windows-arm64.zip $(APP_NAME).app
+
+package-windows-amd64: clean create-dirs
+	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+	fyne package -os windows \
+	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
+	-name "$(APP_NAME)" \
+	-appID "$(BUNDLE_ID)" \
+	--sourceDir $(GUI_SRC_DIR)
+	cd $(WINDOWS_AMD64_DIR) && zip -r $(APP_NAME)-windows-amd64.zip $(APP_NAME).app
+
 #package-linux:
 #	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 #	fyne package -os linux \

@@ -106,7 +106,6 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest
 
       - name: Bundle Assets
@@ -121,7 +120,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./fyne-cross/dist/windows-amd64/gui.exe
+          asset_path: ./dist/windows-amd64/gui.exe
           asset_name: NotesAnkify-windows-amd64.exe
           asset_content_type: application/octet-stream
 
