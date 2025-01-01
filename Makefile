@@ -63,7 +63,7 @@ windows-app:
 linux-app:
 	@echo "Building Linux app..."
 	fyne-cross linux \
-		-arch=amd64,arm64 \
+		-arch=amd64 \
 		-icon ./assets/icons/png/icon-512.png \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
