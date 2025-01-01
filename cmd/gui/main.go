@@ -577,7 +577,7 @@ func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
 	)
 
 	versionLabel := widget.NewLabelWithStyle(
-		"Version: v"+version.Version,
+		"Version: "+version.Version,
 		fyne.TextAlignCenter,
 		fyne.TextStyle{Italic: true},
 	)
