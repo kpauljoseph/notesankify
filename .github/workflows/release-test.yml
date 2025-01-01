@@ -83,10 +83,10 @@ jobs:
 
       - name: Build All Platforms
         env:
-          MACOS_SDK_PATH: "$HOME/MacOSX-SDKs/MacOSX12.3.sdk"
+          MACOS_SDK_PATH: "${HOME}/MacOSX-SDKs/MacOSX12.3.sdk"
         run: |
           # Modify darwin-app command to include SDK path
-          sed -i "s|fyne-cross darwin|fyne-cross darwin --macosx-sdk-path $MACOS_SDK_PATH|g" Makefile
+          sed -i "s|fyne-cross darwin|fyne-cross darwin --macosx-sdk-path ${MACOS_SDK_PATH} |g" Makefile
           make package-all
 
       # Prepare release artifacts
