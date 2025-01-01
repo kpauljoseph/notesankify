@@ -11,29 +11,23 @@ LDFLAGS := -ldflags="\
 
 CLI_BINARY_NAME=notesankify
 GUI_BINARY_NAME=notesankify-gui
-
+BUILD_DIR=bin
+DIST_DIR=dist
 COVERAGE_FILE=coverage.out
 GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
 VERSION = 1.0.0
 APP_NAME = NotesAnkify
 BUNDLE_ID = com.notesankify.app
 
-ROOT_DIR := $(shell pwd)
-BUILD_DIR=$(ROOT_DIR)/bin
-DIST_DIR=$(ROOT_DIR)/dist
-GUI_SRC_DIR := $(ROOT_DIR)/cmd/gui
-ASSETS_ICONS_DIR = $(ROOT_DIR)/assets/icons
-ICON_SOURCE = $(ROOT_DIR)/assets/icons/NotesAnkify-icon.svg
-ICON_SET = $(ROOT_DIR)/assets/icons/icon.iconset
+GUI_SRC_DIR=cmd/gui
+ICON_SOURCE = assets/icons/NotesAnkify-icon.svg
+ICON_SET = assets/icons/icon.iconset
 ICONS_NEEDED = 16 32 64 128 256 512 1024
-ASSETS_BUNDLE_DIR = $(ROOT_DIR)/assets/bundle
+ASSETS_BUNDLE_DIR = assets/bundle
 
-DARWIN_ARM64_DIR := $(DIST_DIR)/darwin-arm64
-DARWIN_AMD64_DIR := $(DIST_DIR)/darwin-amd64
-WINDOWS_ARM64_DIR := $(DIST_DIR)/windows-arm64
-WINDOWS_AMD64_DIR := $(DIST_DIR)/windows-amd64
-LINUX_ARM64_DIR := $(DIST_DIR)/linux-arm64
-LINUX_AMD64_DIR := $(DIST_DIR)/linux-amd64
+DARWIN_DIST_DIR = $(DIST_DIR)/darwin
+WINDOWS_DIST_DIR = $(DIST_DIR)/windows
+LINUX_DIST_DIR = $(DIST_DIR)/linux
 
 GOBUILD=go build -v -ldflags="-s -w"
 
@@ -46,35 +40,31 @@ build: icons bundle-assets
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
-darwin-app: package-macos-arm64 package-macos-amd64
-#	@echo "Building MacOS app..."
-#	fyne-cross darwin \
-#		-arch=amd64,arm64 \
-#		$(LDFLAGS) \
-#		-icon ./assets/icons/icon.icns \
-#		-name "$(APP_NAME)" \
-#		--app-id "$(BUNDLE_ID)" \
-#		-output "$(APP_NAME)" \
-#		$(GUI_SRC_DIR)
+darwin-app:
+	@echo "Building MacOS app..."
+	fyne-cross darwin \
+		-arch=amd64,arm64 \
+		$(LDFLAGS) \
+		-icon ./assets/icons/icon.icns \
+		-name "$(APP_NAME)" \
+		--app-id "$(BUNDLE_ID)" \
+		-output "$(APP_NAME)" \
+		$(GUI_SRC_DIR)
 
-#windows-app: package-windows-arm64 package-windows-amd64
-windows-app: package-windows-amd64
-
-#	@echo "Building Windows app..."
-#	fyne-cross windows \
-#		-arch=amd64,arm64 \
-#		$(LDFLAGS) \
-#		-icon ./assets/icons/icon.ico \
-#		-name "$(APP_NAME)" \
-#		--app-id "$(BUNDLE_ID)" \
-#		-output "$(APP_NAME)" \
-#		$(GUI_SRC_DIR)
+windows-app:
+	@echo "Building Windows app..."
+	fyne-cross windows \
+		-arch=amd64,arm64 \
+		-icon ./assets/icons/icon.ico \
+		-name "$(APP_NAME)" \
+		-app-id "$(BUNDLE_ID)" \
+		-output "$(APP_NAME)" \
+		$(GUI_SRC_DIR)
 
 linux-app:
 	@echo "Building Linux app..."
 	fyne-cross linux \
-		-arch=amd64 \
-		$(LDFLAGS) \
+		-arch=amd64,arm64 \
 		-icon ./assets/icons/png/icon-512.png \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
@@ -85,7 +75,7 @@ package-all: clean bundle-assets darwin-app windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
-	fyne bundle -o $(ASSETS_BUNDLE_DIR)/bundled.go --package bundle --prefix Resource $(ASSETS_ICONS_DIR)/png/icon-256.png
+	fyne bundle -o $(ASSETS_BUNDLE_DIR)/bundled.go --package bundle --prefix Resource assets/icons/png/icon-256.png
 
 test:
 	$(GINKGO) -r -v --trace --show-node-events --cover -coverprofile=$(COVERAGE_FILE) ./...
@@ -102,9 +92,6 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(DIST_DIR)
 	rm -f $(COVERAGE_FILE)
-	rm -f $(APP_NAME).app
-	rm -f $(APP_NAME).exe
-	rm -f $(APP_NAME)
 	go clean -testcache
 	find . -type f -name '*.test' -delete
 	rm -rf ./fyne-cross
@@ -145,57 +132,3 @@ clean-icons:
 	rm -rf assets/icons/icon.ico
 	rm -rf assets/icons/icon.icns
 	rm -rf $(ASSETS_BUNDLE_DIR)
-
-create-dirs:
-	mkdir -p $(BUILD_DIR)
-	mkdir -p $(DARWIN_ARM64_DIR)
-	mkdir -p $(DARWIN_AMD64_DIR)
-	mkdir -p $(WINDOWS_ARM64_DIR)
-	mkdir -p $(WINDOWS_AMD64_DIR)
-	mkdir -p $(LINUX_AMD64_DIR)
-
-package-macos-arm64: clean create-dirs
-	cd $(DARWIN_ARM64_DIR) && CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
-	fyne package -os darwin \
-	--icon $(ASSETS_ICONS_DIR)/icon.icns \
-	-name "$(APP_NAME)" \
-	-appID "$(BUNDLE_ID)" \
-	--sourceDir $(GUI_SRC_DIR)
-	cd $(DARWIN_ARM64_DIR) && zip -r $(APP_NAME)-darwin-arm64.zip $(APP_NAME).app
-
-package-macos-amd64: clean create-dirs
-	cd $(DARWIN_AMD64_DIR) && CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-	fyne package -os darwin \
-	-icon $(ASSETS_ICONS_DIR)/icon.icns \
-	-name "$(APP_NAME)" \
-	-appID "$(BUNDLE_ID)" \
-	--sourceDir $(GUI_SRC_DIR)
-	cd $(DARWIN_AMD64_DIR) && zip -r $(APP_NAME)-darwin-amd64.zip $(APP_NAME).app
-
-package-windows-arm64: clean create-dirs
-	cd $(WINDOWS_ARM64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=arm64 CC=/usr/bin/x86_64-w64-mingw32-gcc \
-	fyne package -os windows \
-	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
-	-name "$(APP_NAME)" \
-	-appID "$(BUNDLE_ID)" \
-	--sourceDir $(GUI_SRC_DIR)
-	cd $(WINDOWS_ARM64_DIR) && zip -r $(APP_NAME)-windows-arm64.zip $(APP_NAME).app
-
-package-windows-amd64: clean create-dirs
-	cd $(WINDOWS_AMD64_DIR) && CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=/usr/bin/x86_64-w64-mingw32-gcc CGO_LDFLAGS=-static-libgcc \
-	fyne package -os windows \
-	-icon  $(ASSETS_ICONS_DIR)/icon.ico \
-	-name "$(APP_NAME)" \
-	-appID "$(BUNDLE_ID)" \
-	--sourceDir $(GUI_SRC_DIR)
-	cd $(WINDOWS_AMD64_DIR) && zip -r $(APP_NAME)-windows-amd64.zip $(APP_NAME).app
-
-#package-linux:
-#	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-#	fyne package -os linux \
-#	-icon assets/icons/png/icon-512.png \
-#	-name "$(APP_NAME)" \
-#	-appID "$(BUNDLE_ID)" \
-#	$(GUI_SRC_DIR)
-
-package-all-test: clean bundle-assets package-macos-arm64 package-macos-amd64 package-windows package-linux
