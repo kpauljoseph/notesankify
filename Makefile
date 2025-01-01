@@ -44,7 +44,7 @@ darwin-app:
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
 		-arch=amd64,arm64 \
-		$(LDFLAGS) \
+#		$(LDFLAGS) \
 		-icon ./assets/icons/icon.icns \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
