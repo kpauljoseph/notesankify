@@ -1,4 +1,4 @@
-name: Release NotesAnkify
+name: Test Release NotesAnkify
 
 on:
   push:
@@ -51,7 +51,22 @@ jobs:
           go install github.com/fyne-io/fyne-cross@latest
           go install fyne.io/fyne/v2/cmd/fyne@latest
 
-      # Generate version.json for the website
+      - name: Set up macOS SDK
+        run: |
+          # Download Command Line Tools
+          wget https://download.developer.apple.com/Developer_Tools/Command_Line_Tools_for_Xcode_12.4/Command_Line_Tools_for_Xcode_12.4.dmg
+          
+          # Create directory for SDK
+          mkdir -p $HOME/MacOSX-SDKs
+          
+          # Extract SDK using fyne-cross
+          fyne-cross darwin-sdk-extract --xcode-path Command_Line_Tools_for_Xcode_12.4.dmg
+          
+          # Move SDK to our directory
+          mv SDKs/MacOSX11.1.sdk $HOME/MacOSX-SDKs/
+          
+          echo "SDK location: $HOME/MacOSX-SDKs/MacOSX11.1.sdk"
+
       - name: Generate version.json
         run: |
           VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
@@ -71,7 +86,12 @@ jobs:
           EOF
 
       - name: Build All Platforms
-        run: make package-all
+        env:
+          MACOS_SDK_PATH: "$HOME/MacOSX-SDKs/MacOSX11.1.sdk"
+        run: |
+          # Modify darwin-app command to include SDK path
+          sed -i "s|fyne-cross darwin|fyne-cross darwin --macosx-sdk-path $MACOS_SDK_PATH|g" Makefile
+          make package-all
 
       # Prepare release artifacts
       - name: Prepare macOS Universal Build
@@ -89,7 +109,7 @@ jobs:
         run: |
           cp fyne-cross/dist/windows-amd64/gui.exe NotesAnkify-windows-amd64.exe
 
-      # Upload the version.json to your GitHub Pages repo
+      # Upload the version.json to GitHub Pages repo
       - name: Deploy version.json
         uses: JamesIves/github-pages-deploy-action@v4
         with:
