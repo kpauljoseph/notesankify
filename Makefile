@@ -43,7 +43,7 @@ build: icons bundle-assets
 darwin-app:
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
-		-arch=amd64,arm64 \
+		-arch=arm64 \
 		-icon ./assets/icons/icon.icns \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
@@ -70,7 +70,7 @@ linux-app:
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean bundle-assets darwin-app windows-app linux-app
+package-all: clean bundle-assets windows-app linux-app darwin-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
