@@ -1,9 +1,9 @@
 package version
 
 var (
-	Version   = "0.1.0"
-	CommitSHA = "unknown"
-	BuildTime = "unknown"
+	// These values are injected during build - DO NOT MODIFY
+	Version   = "VERSION_PLACEHOLDER"
+	CommitSHA = "COMMIT_PLACEHOLDER"
 )
 
 func GetVersionInfo() string {
@@ -13,6 +13,5 @@ func GetVersionInfo() string {
 func GetDetailedVersionInfo() string {
 	return "NotesAnkify\n" +
 		"Version:  " + Version + "\n" +
-		"Commit:   " + CommitSHA + "\n" +
-		"Built:    " + BuildTime
+		"Commit:   " + CommitSHA + "\n"
 }

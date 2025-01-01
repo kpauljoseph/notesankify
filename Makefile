@@ -1,13 +1,17 @@
 .PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app
 
-VERSION ?= $(shell git describe --tags --always --dirty)
-COMMIT  ?= $(shell git rev-parse --short HEAD)
-BUILD_TIME ?= $(shell date -u '+%Y-%m-%d-%H:%M:%S')
+VERSION := $(shell git describe --tags --always --dirty)
+COMMIT  := $(shell git rev-parse --short HEAD)
 
-LDFLAGS := -ldflags="\
-    -X 'github.com/kpauljoseph/notesankify/pkg/version.Version=$(VERSION)' \
-    -X 'github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=$(COMMIT)' \
-    -X 'github.com/kpauljoseph/notesankify/pkg/version.BuildTime=$(BUILD_TIME)'"
+# ldflags not working in fyne-cross. Wait for issue to get fixed in repo.
+#LDFLAGS := -ldflags="\
+#    -X 'github.com/kpauljoseph/notesankify/pkg/version.Version=$(VERSION)' \
+#    -X 'github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=$(COMMIT)' \
+#    -X 'github.com/kpauljoseph/notesankify/pkg/version.BuildTime=$(BUILD_TIME)'"
+
+#export GOFLAGS='-ldflags=-X=github.com/kpauljoseph/notesankify/pkg/version.Version=test-v0.1.0-dirty \
+#                             -X=github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=edf25ee \
+#                             -X=github.com/kpauljoseph/notesankify/pkg/version.BuildTime=2025-01-01-16:36:44'
 
 CLI_BINARY_NAME=notesankify
 GUI_BINARY_NAME=notesankify-gui
@@ -15,7 +19,6 @@ BUILD_DIR=bin
 DIST_DIR=dist
 COVERAGE_FILE=coverage.out
 GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
-VERSION = 1.0.0
 APP_NAME = NotesAnkify
 BUNDLE_ID = com.notesankify.app
 
@@ -31,26 +34,36 @@ LINUX_DIST_DIR = $(DIST_DIR)/linux
 
 GOBUILD=go build -v -ldflags="-s -w"
 
+inject-version:
+	echo "Injecting version information..."
+	cp pkg/version/version.go pkg/version/version.go.tmp
+	sed -i '' \
+		-e 's/VERSION_PLACEHOLDER/$(VERSION)/' \
+		-e 's/COMMIT_PLACEHOLDER/$(COMMIT)/' \
+		pkg/version/version.go.tmp
+	mv pkg/version/version.go.tmp pkg/version/version.go
+
 install-tools:
 	@echo "Installing fyne-cross..."
 	go install github.com/fyne-io/fyne-cross@latest
 
-build: icons bundle-assets
+build: inject-version icons bundle-assets
 	mkdir -p $(BUILD_DIR)
-	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
-	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
-darwin-app:
+
+darwin-app: inject-version
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
-		-arch=arm64 \
+		-arch=amd64,arm64 \
 		-icon ./assets/icons/icon.icns \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-windows-app:
+windows-app: inject-version
 	@echo "Building Windows app..."
 	fyne-cross windows \
 		-arch=amd64,arm64 \
@@ -60,7 +73,8 @@ windows-app:
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-linux-app:
+# linux-arm64 does not work yet.
+linux-app: inject-version
 	@echo "Building Linux app..."
 	fyne-cross linux \
 		-arch=amd64 \
@@ -91,6 +105,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(DIST_DIR)
 	rm -f $(COVERAGE_FILE)
+	rm -f pkg/version/version.go.tmp
 	go clean -testcache
 	find . -type f -name '*.test' -delete
 	rm -rf ./fyne-cross
