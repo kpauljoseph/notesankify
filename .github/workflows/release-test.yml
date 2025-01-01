@@ -53,19 +53,15 @@ jobs:
 
       - name: Set up macOS SDK
         run: |
-          # Download Command Line Tools
-          wget https://download.developer.apple.com/Developer_Tools/Command_Line_Tools_for_Xcode_12.4/Command_Line_Tools_for_Xcode_12.4.dmg
+          # Download pre-packaged minimal SDK
+          wget https://github.com/joseluisq/macosx-sdks/releases/download/12.3/MacOSX12.3.sdk.tar.xz
           
-          # Create directory for SDK
+          # Create directory and extract
           mkdir -p $HOME/MacOSX-SDKs
+          tar xf MacOSX12.3.sdk.tar.xz -C $HOME/MacOSX-SDKs/
           
-          # Extract SDK using fyne-cross
-          fyne-cross darwin-sdk-extract --xcode-path Command_Line_Tools_for_Xcode_12.4.dmg
-          
-          # Move SDK to our directory
-          mv SDKs/MacOSX11.1.sdk $HOME/MacOSX-SDKs/
-          
-          echo "SDK location: $HOME/MacOSX-SDKs/MacOSX11.1.sdk"
+          echo "SDK location: $HOME/MacOSX-SDKs/MacOSX12.3.sdk"
+          ls -la $HOME/MacOSX-SDKs/MacOSX12.3.sdk
 
       - name: Generate version.json
         run: |
@@ -87,7 +83,7 @@ jobs:
 
       - name: Build All Platforms
         env:
-          MACOS_SDK_PATH: "$HOME/MacOSX-SDKs/MacOSX11.1.sdk"
+          MACOS_SDK_PATH: "$HOME/MacOSX-SDKs/MacOSX12.3.sdk"
         run: |
           # Modify darwin-app command to include SDK path
           sed -i "s|fyne-cross darwin|fyne-cross darwin --macosx-sdk-path $MACOS_SDK_PATH|g" Makefile
