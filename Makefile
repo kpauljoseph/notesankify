@@ -2,7 +2,7 @@
 
 VERSION ?= $(shell git describe --tags --always --dirty)
 COMMIT  ?= $(shell git rev-parse --short HEAD)
-BUILD_TIME ?= $(shell date -u '+%Y-%m-%d %H:%M:%S')
+BUILD_TIME ?= $(shell date -u '+%Y-%m-%d-%H:%M:%S')
 
 LDFLAGS := -ldflags="\
     -X 'github.com/kpauljoseph/notesankify/pkg/version.Version=$(VERSION)' \
