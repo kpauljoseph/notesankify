@@ -45,9 +45,14 @@ jobs:
           fetch-depth: 0
 
       - name: Generate version.json
+        env:
+          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
-          cat > version.json << EOF
+          # Create temporary folder for version.json only
+          mkdir -p temp-version
+          
+          # Generate version.json in temporary folder
+          cat > temp-version/version.json << EOF
           {
               "latest_version": "$VERSION",
               "min_version": "$VERSION",
@@ -70,9 +75,9 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository-name: kpauljoseph/notesankify.github.io
           branch: main
-          folder: .
+          folder: temp-version
+          clean: false
           target-folder: .
-          files: version.json
 
   update-release-notes:
     needs: [create-release, update-metadata]
