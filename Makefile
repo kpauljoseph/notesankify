@@ -25,8 +25,9 @@ APP_NAME = NotesAnkify
 BUNDLE_ID = com.notesankify.app
 
 GUI_SRC_DIR=cmd/gui
-ICON_SOURCE = assets/icons/NotesAnkify-icon.svg
-ICON_SET = assets/icons/icon.iconset
+ASSETS_ICONS = assets/icons
+ICON_SOURCE = $(ASSETS_ICONS)/NotesAnkify-icon.svg
+ICON_SET = $(ASSETS_ICONS)/icon.iconset
 ICONS_NEEDED = 16 32 64 128 256 512 1024
 ASSETS_BUNDLE_DIR = assets/bundle
 
@@ -61,7 +62,7 @@ darwin-app: generate-version
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
 		-arch=amd64,arm64 \
-		-icon ./assets/icons/icon.icns \
+		-icon ./$(ASSETS_ICONS)/icon.icns \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
@@ -71,7 +72,7 @@ windows-app: generate-version
 	@echo "Building Windows app..."
 	fyne-cross windows \
 		-arch=amd64,arm64 \
-		-icon ./assets/icons/icon.ico \
+		-icon ./$(ASSETS_ICONS)/icon.ico \
 		-name "$(APP_NAME)" \
 		-app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
@@ -82,7 +83,7 @@ linux-app: generate-version
 	@echo "Building Linux app..."
 	fyne-cross linux \
 		-arch=amd64 \
-		-icon ./assets/icons/png/icon-512.png \
+		-icon ./$(ASSETS_ICONS)/png/icon-512.png \
 		-name "$(APP_NAME)" \
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
@@ -133,20 +134,20 @@ icons: clean-icons
 	# Generate PNGs
 	for size in $(ICONS_NEEDED); do \
 		magick -background none -density $${size}x$${size} $(ICON_SOURCE) \
-		-resize $${size}x$${size} assets/icons/png/icon-$${size}.png; \
-		cp assets/icons/png/icon-$${size}.png $(ICON_SET)/icon_$${size}x$${size}.png; \
+		-resize $${size}x$${size} $(ASSETS_ICONS)/png/icon-$${size}.png; \
+		cp $(ASSETS_ICONS)/png/icon-$${size}.png $(ICON_SET)/icon_$${size}x$${size}.png; \
 	done
 	# Create icns for macOS
-	iconutil -c icns -o assets/icons/icon.icns $(ICON_SET)
+	iconutil -c icns -o $(ASSETS_ICONS)/icon.icns $(ICON_SET)
 	# Create ico for Windows (using sizes up to 256 as per ICO spec)
-	magick assets/icons/png/icon-16.png assets/icons/png/icon-32.png \
-		assets/icons/png/icon-64.png \
-		assets/icons/png/icon-128.png assets/icons/png/icon-256.png \
-		assets/icons/icon.ico
+	magick $(ASSETS_ICONS)/png/icon-16.png $(ASSETS_ICONS)/png/icon-32.png \
+		$(ASSETS_ICONS)/png/icon-64.png \
+		$(ASSETS_ICONS)/png/icon-128.png $(ASSETS_ICONS)/png/icon-256.png \
+		$(ASSETS_ICONS)/icon.ico
 
 clean-icons:
-	rm -rf assets/icons/png
-	rm -rf assets/icons/icon.iconset
-	rm -rf assets/icons/icon.ico
-	rm -rf assets/icons/icon.icns
+	rm -rf $(ASSETS_ICONS)/png
+	rm -rf $(ASSETS_ICONS)/icon.iconset
+	rm -rf $(ASSETS_ICONS)/icon.ico
+	rm -rf $(ASSETS_ICONS)/icon.icns
 	rm -rf $(ASSETS_BUNDLE_DIR)
