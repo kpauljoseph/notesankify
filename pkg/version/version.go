@@ -1,17 +1,19 @@
 package version
 
+// Version information, populated via generated.go during build
 var (
-	// These values are injected during build - DO NOT MODIFY
-	Version   = "VERSION_PLACEHOLDER"
-	CommitSHA = "COMMIT_PLACEHOLDER"
+	Version   = "dev"
+	CommitSHA = "unknown"
+	BuildTime = "unknown"
 )
 
 func GetVersionInfo() string {
-	return "NotesAnkify " + Version
+	return Version
 }
 
 func GetDetailedVersionInfo() string {
 	return "NotesAnkify\n" +
 		"Version:  " + Version + "\n" +
-		"Commit:   " + CommitSHA + "\n"
+		"Commit:   " + CommitSHA + "\n" +
+		"Built:    " + BuildTime
 }

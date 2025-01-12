@@ -1,7 +1,8 @@
-.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app
+.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app generate-version
 
 VERSION := $(shell git describe --tags --always --dirty)
 COMMIT  := $(shell git rev-parse --short HEAD)
+BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S')
 
 # ldflags not working in fyne-cross. Wait for issue to get fixed in repo.
 #LDFLAGS := -ldflags="\
@@ -9,9 +10,10 @@ COMMIT  := $(shell git rev-parse --short HEAD)
 #    -X 'github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=$(COMMIT)' \
 #    -X 'github.com/kpauljoseph/notesankify/pkg/version.BuildTime=$(BUILD_TIME)'"
 
-#export GOFLAGS='-ldflags=-X=github.com/kpauljoseph/notesankify/pkg/version.Version=test-v0.1.0-dirty \
-#                             -X=github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=edf25ee \
-#                             -X=github.com/kpauljoseph/notesankify/pkg/version.BuildTime=2025-01-01-16:36:44'
+#darwin-app: export GOFLAGS='-ldflags=-X=github.com/kpauljoseph/notesankify/pkg/version.Version=123456789 \
+#                             -X=github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=commit123456 \
+#                             -X=github.com/kpauljoseph/notesankify/pkg/version.BuildTime=build123456'
+#windows-app: export GOFLAGS=--ldflags=-X=github.com/kpauljoseph/notesankify/pkg/version.Version=123456789,-X=github.com/kpauljoseph/notesankify/pkg/version.CommitSHA=commit123456,-X=github.com/kpauljoseph/notesankify/pkg/version.BuildTime=build123456
 
 CLI_BINARY_NAME=notesankify
 GUI_BINARY_NAME=notesankify-gui
@@ -34,26 +36,28 @@ LINUX_DIST_DIR = $(DIST_DIR)/linux
 
 GOBUILD=go build -v -ldflags="-s -w"
 
-inject-version:
-	echo "Injecting version information..."
-	cp pkg/version/version.go pkg/version/version.go.tmp
-	sed -i '' \
-		-e 's/VERSION_PLACEHOLDER/$(VERSION)/' \
-		-e 's/COMMIT_PLACEHOLDER/$(COMMIT)/' \
-		pkg/version/version.go.tmp
-	mv pkg/version/version.go.tmp pkg/version/version.go
+generate-version:
+	@echo "Generating version information..."
+	@echo "package version" > pkg/version/generated.go
+	@echo "" >> pkg/version/generated.go
+	@echo "func init() {" >> pkg/version/generated.go
+	@echo "    Version = \"$(VERSION)\"" >> pkg/version/generated.go
+	@echo "    CommitSHA = \"$(COMMIT)\"" >> pkg/version/generated.go
+	@echo "    BuildTime = \"$(BUILD_TIME)\"" >> pkg/version/generated.go
+	@echo "}" >> pkg/version/generated.go
+	@cat pkg/version/generated.go
 
 install-tools:
 	@echo "Installing fyne-cross..."
 	go install github.com/fyne-io/fyne-cross@latest
 
-build: inject-version icons bundle-assets
+build: generate-version icons bundle-assets
 	mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
 	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
 
 
-darwin-app: inject-version
+darwin-app: generate-version
 	@echo "Building MacOS app..."
 	fyne-cross darwin \
 		-arch=amd64,arm64 \
@@ -63,7 +67,7 @@ darwin-app: inject-version
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-windows-app: inject-version
+windows-app: generate-version
 	@echo "Building Windows app..."
 	fyne-cross windows \
 		-arch=amd64,arm64 \
@@ -74,7 +78,7 @@ windows-app: inject-version
 		$(GUI_SRC_DIR)
 
 # linux-arm64 does not work yet.
-linux-app: inject-version
+linux-app: generate-version
 	@echo "Building Linux app..."
 	fyne-cross linux \
 		-arch=amd64 \
@@ -84,7 +88,7 @@ linux-app: inject-version
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean bundle-assets windows-app linux-app darwin-app
+package-all: clean bundle-assets generate-version windows-app linux-app darwin-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)

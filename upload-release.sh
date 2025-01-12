@@ -1,5 +1,7 @@
 #!/bin/bash
+set -x
 
+# Temporary mechanishm till fyne-cross package works on github runner.
 # Script for uploading locally built artifacts to GitHub release
 # Usage: ./upload-release.sh <version>
 # Example: ./upload-release.sh v0.1.0
@@ -20,20 +22,20 @@ echo "Uploading artifacts for version $VERSION..."
 
 # Upload macOS builds
 gh release upload "$VERSION" \
-    "fyne-cross/dist/darwin-amd64/NotesAnkify.app.zip" \
-    "fyne-cross/dist/darwin-arm64/NotesAnkify.app.zip" \
+    "fyne-cross/dist/darwin-amd64/NotesAnkify" \
+    "fyne-cross/dist/darwin-arm64/NotesAnkify" \
     --clobber
 
 # Upload Windows builds
 gh release upload "$VERSION" \
-    "fyne-cross/dist/windows-amd64/NotesAnkify.exe" \
-    "fyne-cross/dist/windows-arm64/NotesAnkify.exe" \
+    "fyne-cross/dist/windows-amd64/NotesAnkify.zip" \
+    "fyne-cross/dist/windows-arm64/NotesAnkify.zip" \
     --clobber
 
 # Upload Linux builds
 echo "Uploading Linux builds..."
 gh release upload "$VERSION" \
-    "fyne-cross/dist/linux-amd64/NotesAnkify" \
+    "fyne-cross/dist/linux-amd64/NotesAnkify.tar.xz" \
     --clobber
 
 echo "Upload complete!"

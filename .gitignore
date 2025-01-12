@@ -47,3 +47,6 @@ flashcards
 *.exe
 *.AppImage
 fyne-cross/
+
+# Version generated file
+pkg/version/generated.go
