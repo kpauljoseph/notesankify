@@ -18,7 +18,7 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S')
 CLI_BINARY_NAME=notesankify
 GUI_BINARY_NAME=notesankify-gui
 BUILD_DIR=bin
-DIST_DIR=dist
+DIST_DIR=fyne-cross/dist
 COVERAGE_FILE=coverage.out
 GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
 APP_NAME = NotesAnkify
@@ -31,9 +31,7 @@ ICON_SET = $(ASSETS_ICONS)/icon.iconset
 ICONS_NEEDED = 16 32 64 128 256 512 1024
 ASSETS_BUNDLE_DIR = assets/bundle
 
-DARWIN_DIST_DIR = $(DIST_DIR)/darwin
-WINDOWS_DIST_DIR = $(DIST_DIR)/windows
-LINUX_DIST_DIR = $(DIST_DIR)/linux
+DARWIN_UNIVERSAL_DIR := $(DIST_DIR)/darwin-universal
 
 GOBUILD=go build -v -ldflags="-s -w"
 
@@ -68,6 +66,17 @@ darwin-app: generate-version
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
+darwin-universal: darwin-app
+	@echo "Creating universal macOS binary..."
+	mkdir -p $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app
+	cp -r fyne-cross/dist/darwin-amd64/$(APP_NAME).app/* $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/
+	mkdir -p $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS
+	lipo -create \
+		fyne-cross/dist/darwin-amd64/$(APP_NAME).app/Contents/MacOS/gui \
+		fyne-cross/dist/darwin-arm64/$(APP_NAME).app/Contents/MacOS/gui \
+		-output $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS/gui
+	cd $(DARWIN_UNIVERSAL_DIR) && zip -r $(APP_NAME)-darwin-universal.zip $(APP_NAME).app
+
 windows-app: generate-version
 	@echo "Building Windows app..."
 	fyne-cross windows \
@@ -89,7 +98,7 @@ linux-app: generate-version
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
 
-package-all: clean bundle-assets generate-version windows-app linux-app darwin-app
+package-all: clean bundle-assets generate-version darwin-universal windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
