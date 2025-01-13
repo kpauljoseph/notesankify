@@ -33,9 +33,7 @@ jobs:
           release_name: NotesAnkify ${{ github.ref }}
           draft: true
           prerelease: false
-          body: |
-            Release Notes:
-            - TBD (will be updated)
+          body: "Loading release notes..."
   update-metadata:
     needs: create-release
     runs-on: ubuntu-latest
@@ -80,7 +78,7 @@ jobs:
           target-folder: .
 
   update-release-notes:
-    needs: [create-release, update-metadata]
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -94,7 +92,8 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           VERSION=${TAG#v}
           NOTES=$(awk "/## \[$VERSION\]/{p=1;print;next} /## \[/{p=0} p" CHANGELOG.md)
-          gh release edit $TAG -n "$NOTES"
+          # Use --draft flag to ensure we're updating existing draft
+          gh release edit $TAG --draft --notes "$NOTES" || echo "Failed to update release notes"
 
 # ORIGINAL FULL CI/CD WORKFLOW (Currently disabled)
 # This section is preserved for reference and will be re-enabled once
