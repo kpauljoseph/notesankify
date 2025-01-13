@@ -52,16 +52,16 @@ jobs:
           # Generate version.json in temporary folder
           cat > temp-version/version.json << EOF
           {
-              "latest_version": "$VERSION",
-              "min_version": "$VERSION",
+              "latest_version": "${VERSION}",
+              "min_version": "${VERSION}",
               "download_url": "https://notesankify.github.io/download",
-              "update_message": "New version $VERSION is available with improvements and bug fixes!",
+              "update_message": "New version ${VERSION} is available with improvements and bug fixes!",
               "force_update": false,
               "platform_downloads": {
-                  "windows-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-amd64.zip",
-                  "windows-arm64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-arm64.zip",
-                  "darwin-universal": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-darwin-universal.zip",
-                  "linux-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-linux-amd64.tar.xz"
+                  "windows/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-amd64.zip",
+                  "windows/arm64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-arm64.zip",
+                  "darwin/all": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-darwin-universal.zip",
+                  "linux/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-linux-amd64.tar.xz"
               }
           }
           EOF
