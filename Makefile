@@ -86,6 +86,8 @@ windows-app: generate-version
 		-app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
+	mv $(DIST_DIR)/windows-amd64/NotesAnkify.zip $(DIST_DIR)/windows-amd64/NotesAnkify-windows-amd64.zip
+	mv $(DIST_DIR)/windows-arm64/NotesAnkify.zip $(DIST_DIR)/windows-arm64/NotesAnkify-windows-arm64.zip
 
 # linux-arm64 does not work yet.
 linux-app: generate-version
@@ -97,6 +99,7 @@ linux-app: generate-version
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
+	mv $(DIST_DIR)/linux-amd64/NotesAnkify.tar.xz $(DIST_DIR)/linux-amd64/NotesAnkify-linux-amd64.tar.xz
 
 package-all: clean bundle-assets generate-version darwin-universal windows-app linux-app
 

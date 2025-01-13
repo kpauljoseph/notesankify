@@ -33,14 +33,14 @@ gh release upload "$VERSION" \
 
 # Upload Windows builds
 gh release upload "$VERSION" \
-    "fyne-cross/dist/windows-amd64/NotesAnkify.zip" \
-    "fyne-cross/dist/windows-arm64/NotesAnkify.zip" \
+    "fyne-cross/dist/windows-amd64/NotesAnkify-windows-amd64.zip" \
+    "fyne-cross/dist/windows-arm64/NotesAnkify-windows-arm64.zip" \
     --clobber
 
 # Upload Linux builds
 echo "Uploading Linux builds..."
 gh release upload "$VERSION" \
-    "fyne-cross/dist/linux-amd64/NotesAnkify.tar.xz" \
+    "fyne-cross/dist/linux-amd64/NotesAnkify-linux-amd64.tar.xz" \
     --clobber
 
 echo "Upload complete!"
