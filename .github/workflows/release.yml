@@ -58,10 +58,9 @@ jobs:
               "update_message": "New version $VERSION is available with improvements and bug fixes!",
               "force_update": false,
               "platform_downloads": {
-                  "windows-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-amd64.exe",
-                  "windows-arm64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-arm64.exe",
-                  "darwin-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-darwin-amd64.zip",
-                  "darwin-arm64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-darwin-arm64.zip",
+                  "windows-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-amd64.zip",
+                  "windows-arm64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-windows-arm64.zip",
+                  "darwin-universal": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-darwin-universal.zip",
                   "linux-amd64": "https://github.com/kpauljoseph/notesankify/releases/latest/download/NotesAnkify-linux-amd64.tar.xz"
               }
           }
