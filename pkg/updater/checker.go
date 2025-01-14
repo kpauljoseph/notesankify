@@ -71,10 +71,14 @@ func (c *Checker) checkPrimaryEndpoint() (*UpdateInfo, error) {
 	currentVersion := strings.TrimPrefix(version.Version, "v")
 	latestVersion := strings.TrimPrefix(versionInfo.LatestVersion, "v")
 
-	// Get platform-specific download URL
-	downloadURL := versionInfo.DownloadURL
-	if platformURL, ok := versionInfo.PlatformDownloads[runtime.GOOS]; ok {
-		downloadURL = platformURL
+	platformKey := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+	if runtime.GOOS == "darwin" {
+		platformKey = "darwin/all"
+	}
+
+	downloadURL, ok := versionInfo.PlatformDownloads[platformKey]
+	if !ok {
+		return nil, fmt.Errorf("no download available for platform %s", platformKey)
 	}
 
 	return &UpdateInfo{

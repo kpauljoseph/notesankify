@@ -11,11 +11,11 @@ permissions:
   id-token: write
 
 # Steps to use this workflow:
-# 1. Build packages locally using: make package-all
-# 2. Push a tag: git tag v0.1.0 && git push origin v0.1.0
-# 3. This workflow will create the release and update metadata
-# 4. Upload built packages using the upload script (see upload-release.sh)
-# 5. Review and publish the release on GitHub
+# 1. Push a tag: git tag v0.1.0 && git push origin v0.1.0
+# 2. This workflow will create the release and update metadata
+# 3. Build packages locally using: make package-all
+# 4. Upload built packages using the upload-release.sh script
+# 5. Review and publish the release on GitHub.
 
 jobs:
   create-release:
@@ -54,7 +54,6 @@ jobs:
           {
               "latest_version": "${VERSION}",
               "min_version": "${VERSION}",
-              "download_url": "https://notesankify.github.io/download",
               "update_message": "New version ${VERSION} is available with improvements and bug fixes!",
               "force_update": false,
               "platform_downloads": {
@@ -71,6 +70,7 @@ jobs:
         with:
           token: ${{ secrets.ACCESS_TOKEN }}
           repository-name: kpauljoseph/notesankify.github.io
+          commit-message: "version ${{ github.ref_name }} release from ${{ github.sha }}"
           branch: main
           folder: temp-version
           clean: false
@@ -91,7 +91,6 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           VERSION=${TAG#v}
           NOTES=$(awk "/## \[$VERSION\]/{p=1;print;next} /## \[/{p=0} p" CHANGELOG.md)
-          # Use --draft flag to ensure we're updating existing draft
           gh release edit $TAG --draft --notes "$NOTES" || echo "Failed to update release notes"
 
 # ORIGINAL FULL CI/CD WORKFLOW (Currently disabled)
