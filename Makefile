@@ -75,7 +75,7 @@ darwin-universal: darwin-app
 		fyne-cross/dist/darwin-amd64/$(APP_NAME).app/Contents/MacOS/gui \
 		fyne-cross/dist/darwin-arm64/$(APP_NAME).app/Contents/MacOS/gui \
 		-output $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS/gui
-	cd $(DARWIN_UNIVERSAL_DIR) && zip -r $(APP_NAME)-darwin-universal.zip $(APP_NAME).app
+	cd $(DARWIN_UNIVERSAL_DIR) && zip -r $(APP_NAME)-macos-universal.zip $(APP_NAME).app
 
 windows-app: generate-version
 	@echo "Building Windows app..."

@@ -28,7 +28,7 @@ echo "Uploading artifacts for version $VERSION..."
 
 # Upload macOS universal build
 gh release upload "$VERSION" \
-    "fyne-cross/dist/darwin-universal/NotesAnkify-darwin-universal.zip" \
+    "fyne-cross/dist/darwin-universal/NotesAnkify-macos-universal.zip" \
     --clobber
 
 # Upload Windows builds
