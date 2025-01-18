@@ -17,6 +17,7 @@ import (
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"github.com/kpauljoseph/notesankify/pkg/version"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -646,7 +647,16 @@ func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
 		commitLabel,
 	)
 
-	header := container.NewBorder(nil, container.NewPadded(textContainer), nil, nil, appIcon)
+	supportButton := widget.NewButton("Buy Me a Coffee ☕", func() {
+		if u, err := url.Parse("https://notesankify.com/support"); err == nil {
+			fyne.CurrentApp().OpenURL(u)
+		}
+	})
+	supportButton.Importance = widget.HighImportance
+
+	detailsAndSupportContainer := container.NewBorder(nil, supportButton, nil, nil, textContainer)
+
+	header := container.NewBorder(nil, detailsAndSupportContainer, nil, nil, appIcon)
 
 	return container.NewCenter(
 		container.NewPadded(header),
