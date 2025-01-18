@@ -1,8 +1,8 @@
-.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app generate-version
+.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app generate-version darwin-dmg
 
 VERSION := $(shell git describe --tags --always --dirty)
 COMMIT  := $(shell git rev-parse --short HEAD)
-BUILD_TIME := $(shell date -u '+%Y-%m-%d %H:%M:%S')
+BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H%M%S') # ISO 8601 format for filename
 
 # ldflags not working in fyne-cross. Wait for issue to get fixed in repo.
 #LDFLAGS := -ldflags="\
@@ -24,7 +24,7 @@ GINKGO = go run github.com/onsi/ginkgo/v2/ginkgo
 APP_NAME = NotesAnkify
 BUNDLE_ID = com.notesankify.app
 
-GUI_SRC_DIR=cmd/gui
+GUI_SRC_DIR=cmd/notesankify-gui
 ASSETS_ICONS = assets/icons
 ICON_SOURCE = $(ASSETS_ICONS)/NotesAnkify-icon.svg
 ICON_SET = $(ASSETS_ICONS)/icon.iconset
@@ -32,6 +32,7 @@ ICONS_NEEDED = 16 32 64 128 256 512 1024
 ASSETS_BUNDLE_DIR = assets/bundle
 
 DARWIN_UNIVERSAL_DIR := $(DIST_DIR)/darwin-universal
+DMG_DIR := $(DIST_DIR)/darwin-dmg
 
 GOBUILD=go build -v -ldflags="-s -w"
 
@@ -72,10 +73,15 @@ darwin-universal: darwin-app
 	cp -r fyne-cross/dist/darwin-amd64/$(APP_NAME).app/* $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/
 	mkdir -p $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS
 	lipo -create \
-		fyne-cross/dist/darwin-amd64/$(APP_NAME).app/Contents/MacOS/gui \
-		fyne-cross/dist/darwin-arm64/$(APP_NAME).app/Contents/MacOS/gui \
-		-output $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS/gui
-	cd $(DARWIN_UNIVERSAL_DIR) && zip -r $(APP_NAME)-macos-universal.zip $(APP_NAME).app
+		fyne-cross/dist/darwin-amd64/$(APP_NAME).app/Contents/MacOS/$(GUI_BINARY_NAME) \
+		fyne-cross/dist/darwin-arm64/$(APP_NAME).app/Contents/MacOS/$(GUI_BINARY_NAME) \
+		-output $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app/Contents/MacOS/$(GUI_BINARY_NAME)
+
+
+darwin-dmg: darwin-universal
+	@echo "Creating DMG..."
+	mkdir -p $(DMG_DIR)
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DARWIN_UNIVERSAL_DIR)/$(APP_NAME).app -ov -format UDZO $(DMG_DIR)/$(APP_NAME)-macos-universal-$(VERSION).dmg
 
 windows-app: generate-version
 	@echo "Building Windows app..."
@@ -86,8 +92,8 @@ windows-app: generate-version
 		-app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
-	mv $(DIST_DIR)/windows-amd64/NotesAnkify.zip $(DIST_DIR)/windows-amd64/NotesAnkify-windows-amd64.zip
-	mv $(DIST_DIR)/windows-arm64/NotesAnkify.zip $(DIST_DIR)/windows-arm64/NotesAnkify-windows-arm64.zip
+	mv $(DIST_DIR)/windows-amd64/$(APP_NAME).zip $(DIST_DIR)/windows-amd64/$(APP_NAME)-windows-amd64-$(VERSION).zip
+	mv $(DIST_DIR)/windows-arm64/$(APP_NAME).zip $(DIST_DIR)/windows-arm64/$(APP_NAME)-windows-arm64-$(VERSION).zip
 
 # linux-arm64 does not work yet.
 linux-app: generate-version
@@ -99,9 +105,9 @@ linux-app: generate-version
 		--app-id "$(BUNDLE_ID)" \
 		-output "$(APP_NAME)" \
 		$(GUI_SRC_DIR)
-	mv $(DIST_DIR)/linux-amd64/NotesAnkify.tar.xz $(DIST_DIR)/linux-amd64/NotesAnkify-linux-amd64.tar.xz
+	mv $(DIST_DIR)/linux-amd64/$(APP_NAME).tar.xz $(DIST_DIR)/linux-amd64/$(APP_NAME)-linux-amd64-$(VERSION).tar.xz
 
-package-all: clean bundle-assets generate-version darwin-universal windows-app linux-app
+package-all: clean bundle-assets generate-version darwin-dmg windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)

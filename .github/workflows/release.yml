@@ -57,10 +57,10 @@ jobs:
               "update_message": "New version ${VERSION} is available with improvements and bug fixes!",
               "force_update": false,
               "platform_downloads": {
-                  "windows/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-amd64.zip",
-                  "windows/arm64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-arm64.zip",
-                  "darwin/all": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-macos-universal.zip",
-                  "linux/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-linux-amd64.tar.xz"
+                  "windows/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-amd64-${VERSION}.zip",
+                  "windows/arm64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-arm64-${VERSION}.zip",
+                  "darwin/all": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-macos-universal-${VERSION}.dmg",
+                  "linux/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-linux-amd64-${VERSION}.tar.xz"
               }
           }
           EOF
@@ -161,16 +161,16 @@ jobs:
 #        run: |
 #          mkdir -p universal-darwin
 #          cp -r fyne-cross/dist/darwin-amd64/NotesAnkify.app universal-darwin/
-#          cp -r fyne-cross/dist/darwin-arm64/NotesAnkify.app/Contents/MacOS/gui universal-darwin/NotesAnkify.app/Contents/MacOS/gui-arm64
+#          cp -r fyne-cross/dist/darwin-arm64/NotesAnkify.app/Contents/MacOS/notesankify-gui universal-darwin/NotesAnkify.app/Contents/MacOS/notesankify-gui-arm64
 #          cd universal-darwin/NotesAnkify.app/Contents/MacOS
-#          lipo -create gui gui-arm64 -output gui
-#          rm gui-arm64
+#          lipo -create notesankify-gui notesankify-gui-arm64 -output notesankify-gui
+#          rm notesankify-gui-arm64
 #          cd ../../../
 #          zip -r NotesAnkify-darwin-universal.zip NotesAnkify.app
 #
 #      - name: Prepare Windows Build
 #        run: |
-#          cp fyne-cross/dist/windows-amd64/gui.exe NotesAnkify-windows-amd64.exe
+#          cp fyne-cross/dist/windows-amd64/notesankify-gui.exe NotesAnkify-windows-amd64.exe
 #
 #      # Upload the version.json to GitHub Pages repo
 #      - name: Deploy version.json

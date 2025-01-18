@@ -28,19 +28,19 @@ echo "Uploading artifacts for version $VERSION..."
 
 # Upload macOS universal build
 gh release upload "$VERSION" \
-    "fyne-cross/dist/darwin-universal/NotesAnkify-macos-universal.zip" \
+    "fyne-cross/dist/darwin-dmg/NotesAnkify-macos-universal-$(VERSION).dmg" \
     --clobber
 
 # Upload Windows builds
 gh release upload "$VERSION" \
-    "fyne-cross/dist/windows-amd64/NotesAnkify-windows-amd64.zip" \
-    "fyne-cross/dist/windows-arm64/NotesAnkify-windows-arm64.zip" \
+    "fyne-cross/dist/windows-amd64/NotesAnkify-windows-amd64-$(VERSION).zip" \
+    "fyne-cross/dist/windows-arm64/NotesAnkify-windows-arm64-$(VERSION).zip" \
     --clobber
 
 # Upload Linux builds
 echo "Uploading Linux builds..."
 gh release upload "$VERSION" \
-    "fyne-cross/dist/linux-amd64/NotesAnkify-linux-amd64.tar.xz" \
+    "fyne-cross/dist/linux-amd64/NotesAnkify-linux-amd64-$(VERSION).tar.xz" \
     --clobber
 
 echo "Upload complete!"
