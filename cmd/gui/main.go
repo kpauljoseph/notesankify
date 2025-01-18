@@ -7,7 +7,9 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/assets/bundle"
@@ -201,13 +203,36 @@ func (gui *NotesAnkifyGUI) setupUI() {
 
 	// Create info sections
 	pdfSourceInfo := gui.createInfoSection("PDF Source",
-		"Select the directory containing your PDF files for processing into Anki flashcards.",
+		"Select the directory containing your PDF files for processing into Anki flashcards.\n\n"+
+			"The app will search through all subdirectories for PDF files. For example:\n\n"+
+			"Notes Directory/\n"+
+			"├── Math/\n"+
+			"│     ├── Calculus/\n"+
+			"│     │     └── notes.pdf\n"+
+			"│     └── Algebra/\n"+
+			"│           └── notes.pdf\n"+
+			"├── Physics/\n"+
+			"│     └── notes.pdf\n\n"+
+			"All PDFs in these folders will be processed.",
 		container.NewVBox(dirContainer))
 
 	deckInfo := gui.createInfoSection("Root Deck",
-		"Specify a root deck name to organize your flashcards.\n"+
-			"If not provided, folder names will be used for deck organization.\n"+
-			"Example: 'MyStudies' will create 'MyStudies::Math::Calculus'",
+		"Specify a root deck name to organize your flashcards.\n\n"+
+			"For example, for the following directory structure:\n"+
+			"Notes Directory/\n"+
+			"├── Math/\n"+
+			"│     └── Calculus/\n"+
+			"│         └── notes.pdf\n\n"+
+			"Anki deck structure With root deck 'MyStudies':\n"+
+			"MyStudies\n"+
+			"└── Math\n"+
+			"    └── Calculus\n"+
+			"        └── notes\n\n"+
+			"Without root deck:\n"+
+			"Math\n"+
+			"└── Calculus\n"+
+			"    └── notes\n\n"+
+			"In both cases, nested directory structure is preserved.",
 		container.NewVBox(gui.rootDeckEntry))
 
 	processingInfoText := widget.NewRichTextFromMarkdown(
@@ -267,12 +292,22 @@ func (gui *NotesAnkifyGUI) createInfoSection(title, tooltip string, content fyne
 	infoBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), nil)
 	infoBtn.Importance = widget.LowImportance
 
-	helpText := widget.NewRichTextFromMarkdown(tooltip)
+	helpText := widget.NewRichTextWithText(tooltip)
 	helpText.Wrapping = fyne.TextWrapWord
 
-	helpContainer := container.NewVBox(
-		container.NewPadded(helpText),
+	txtBound := binding.NewString()
+	txtBound.Set(tooltip)
+
+	bottomBox := container.NewHBox(
+		layout.NewSpacer(),
+		widget.NewButtonWithIcon("copy content", theme.ContentCopyIcon(), func() {
+			if content, err := txtBound.Get(); err == nil {
+				gui.window.Clipboard().SetContent(content)
+			}
+		}),
 	)
+
+	helpContainer := container.NewBorder(nil, bottomBox, nil, nil, helpText)
 
 	infoBtn.OnTapped = func() {
 		d := dialog.NewCustom(
@@ -449,8 +484,12 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 		gui.logFileName,
 	)
 
-	customDialog := dialog.NewCustom("Processing Complete", "Close", container.NewVBox(
-		widget.NewLabel(message),
+	txtBound := binding.NewString()
+	txtBound.Set(message)
+
+	messageLabel := widget.NewLabel(message)
+
+	buttonContainer := container.NewHBox(
 		widget.NewButton("Open Log File", func() {
 			// Open log file in default text editor
 			var cmd *exec.Cmd
@@ -466,8 +505,21 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 				dialog.ShowError(fmt.Errorf("failed to open log file: %v", err), gui.window)
 			}
 		}),
-	), gui.window)
+		layout.NewSpacer(),
+		widget.NewButtonWithIcon("Copy Details", theme.ContentCopyIcon(), func() {
+			if content, err := txtBound.Get(); err == nil {
+				gui.window.Clipboard().SetContent(content)
+			}
+		}),
+	)
 
+	content := container.NewVBox(
+		messageLabel,
+		buttonContainer,
+	)
+
+	customDialog := dialog.NewCustom("Processing Complete", "Close", content, gui.window)
+	customDialog.Resize(fyne.NewSize(500, 0))
 	customDialog.Show()
 	gui.status.SetText("Ready to process files...")
 }
