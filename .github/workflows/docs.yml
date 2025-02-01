@@ -1,0 +1,36 @@
+name: Sync Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Prepare documentation structure
+      - name: Prepare documentation
+        run: |
+          mkdir -p temp-docs/content
+          
+          # Copy documentation maintaining structure
+          cp -r docs/* temp-docs/content/
+
+      # Push to website repository
+      - name: Deploy documentation content
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository-name: kpauljoseph/notesankify.github.io
+          commit-message: "content: update from notesankify@${{ github.sha }}"
+          branch: main
+          folder: temp-docs/content
+          clean: false
+          target-folder: content
