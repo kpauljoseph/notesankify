@@ -18,10 +18,10 @@ jobs:
       # Prepare documentation structure
       - name: Prepare documentation
         run: |
-          mkdir -p temp-docs/content
+          mkdir -p temp-docs/
           
           # Copy documentation maintaining structure
-          cp -r docs/* temp-docs/content/
+          cp -r docs/* temp-docs/
 
       # Push to website repository
       - name: Deploy documentation content
@@ -31,6 +31,6 @@ jobs:
           repository-name: kpauljoseph/notesankify.github.io
           commit-message: "content: update from notesankify@${{ github.sha }}"
           branch: main
-          folder: temp-docs/content
+          folder: temp-docs/
           clean: false
-          target-folder: content
+          target-folder: docs
