@@ -83,7 +83,7 @@ Taking notes and creating flashcards are essential for effective studying, but m
 ### Linux
 1. Download the tar.xz file 
 2. Extract using: `tar xf NotesAnkify-linux-*.tar.xz`
-3. Run the NotesAnkify executable
+3. Run the NotesAnkify executable.
 
 ## Creating Flashcards
 
