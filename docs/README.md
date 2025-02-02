@@ -1,20 +1,57 @@
-# NotesAnkify Documentation
+# NotesAnkify
 
-![NotesAnkify Test](images/img.png)
+Turn your PDF notes into Anki flashcards automatically. Study smarter with spaced repetition!
 
+// INSERT IMAGE - A side-by-side comparison showing a PDF note on the left with question/answer sections and the resulting Anki flashcard on the right
 
-Convert your PDF notes to Anki flashcards automatically. This tool monitors a directory for PDFs containing flashcards, processes them based on specified page dimensions, and creates/updates Anki decks while maintaining learning progress.
+## Table of Contents
+- [Why NotesAnkify?](#why-notesankify)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+    - [Windows](#windows)
+    - [macOS](#macos)
+    - [Linux](#linux)
+- [Creating Flashcards](#creating-flashcards)
+    - [Using Question/Answer Markers](#1-using-questionanswer-markers)
+    - [Using Standard Dimensions](#2-using-standard-dimensions)
+    - [Simple Top/Bottom Split](#3-simple-topbottom-split)
+- [Processing Modes](#processing-modes)
+    - [Markers + Dimensions Mode](#1-markers--dimensions-mode-most-strict)
+    - [Markers Only Mode](#2-markers-only-mode-flexible-size)
+    - [Dimensions Only Mode](#3-dimensions-only-mode-standard-size)
+    - [Process All Pages Mode](#4-process-all-pages-mode-most-flexible)
+- [Deck Organization](#deck-organization)
+- [Advanced Features](#advanced-features)
+    - [Duplicate Detection & Smart Updating](#duplicate-detection--smart-updating)
+    - [Output Directory](#output-directory)
+    - [Processing Report](#processing-report)
+- [Troubleshooting](#troubleshooting)
+    - [Common Issues](#common-issues)
+    - [Finding Log Files](#finding-log-files)
+- [FAQ](#faq)
+- [Need Help?](#need-help)
 
-## Quick Start Guide
+## Why NotesAnkify?
+
+Taking notes and creating flashcards are essential for effective studying, but maintaining them separately is time-consuming. NotesAnkify bridges this gap by:
+
+- Converting your PDF notes directly into Anki flashcards
+- Preserving your existing note-taking workflow
+- Supporting multiple note formats and apps
+- Preventing duplicate flashcards automatically
+- Working with both handwritten and typed notes
+
+## Quick Start
 
 1. **Install Prerequisites**
     - Download [Anki Desktop](https://apps.ankiweb.net/)
     - Install [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
-    - Download NotesAnkify for your platform
+    - Download NotesAnkify for your platform (See [Installation Guide](#installation))
 
 2. **Format Your Notes**
-    - Add QUESTION/ANSWER markers, or
-    - Use standard dimensions (455.04 × 587.52 points), or
+   Choose any of these methods:
+    - Add QUESTION/ANSWER markers
+    - Use standard dimensions (455.04 × 587.52 points)
     - Split pages into top (question) and bottom (answer)
 
 3. **Convert to Flashcards**
@@ -24,117 +61,206 @@ Convert your PDF notes to Anki flashcards automatically. This tool monitors a di
     - Choose processing mode
     - Click "Process and Send to Anki"
 
-## Processing Modes
+// INSERT IMAGE - Screenshot of NotesAnkify's main interface with key areas highlighted and numbered according to the steps above
 
-### 1. Markers + Dimensions Mode
-- **Requirements**:
-    - QUESTION/ANSWER markers
-    - Standard dimensions
-- **Best for**: Consistent, precise flashcard creation
-- **Use when**: Using GoodNotes templates
+## Installation
 
-### 2. Markers Only Mode
-- **Requirements**: Only QUESTION/ANSWER markers
-- **Best for**: Mixed page sizes
-- **Use when**: Taking notes in different formats
+### Windows
+1. Download the ZIP file for your system (AMD64/ARM64)
+2. Extract the ZIP file to your desired location
+3. Run NotesAnkify.exe
 
-### 3. Dimensions Only Mode
-- **Requirements**: Standard flashcard dimensions
-- **Best for**: Template-based notes
-- **Use when**: Using consistent templates without markers
+// INSERT IMAGE - Screenshot showing Windows security warning with "More info" and "Run anyway" buttons highlighted
 
-### 4. Process All Pages Mode
-- **Requirements**: None
-- **Best for**: Quick conversions
-- **Use when**: Pages are already in question/answer format
+### macOS
+1. Download the DMG file
+2. Open the DMG file
+3. Drag NotesAnkify to your Applications folder 
+4. Right-click and select "Open" on first launch
 
-## File Preparation
+// INSERT IMAGE - Screenshot showing macOS Gatekeeper dialog with right-click menu open
 
-### Using Markers
+### Linux
+1. Download the tar.xz file 
+2. Extract using: `tar xf NotesAnkify-linux-*.tar.xz`
+3. Run the NotesAnkify executable
+
+## Creating Flashcards
+
+You can create flashcards in three ways:
+
+### 1. Using Question/Answer Markers
+
+Add "QUESTION" and "ANSWER" text to your notes:
 
 QUESTION
 What is photosynthesis?
+
 ANSWER
 Process where plants convert...
 
-### Using Standard Dimensions
+// INSERT IMAGE - Example of a note page with QUESTION/ANSWER markers highlighted
+
+### 2. Using Standard Dimensions
+
+Create pages with these exact dimensions:
 - Width: 455.04 points
 - Height: 587.52 points
 - Question on top half
 - Answer on bottom half
 
+// INSERT IMAGE - Template showing standard dimensions with measurements labeled
+
+### 3. Simple Top/Bottom Split
+
+Any page can be split into:
+- Top half → Question
+- Bottom half → Answer
+
+// INSERT IMAGE - Example of a regular page split into question (top) and answer (bottom)
+
+## Processing Modes
+
+NotesAnkify offers four ways to process your notes:
+
+### 1. Markers + Dimensions Mode (Most Strict)
+- Requires QUESTION/ANSWER markers
+- Must match standard dimensions
+- Best for consistent flashcard creation
+- Perfect when using templates
+
+### 2. Markers Only Mode (Flexible Size)
+- Only checks for QUESTION/ANSWER markers
+- Any page size accepted
+- Good for mixed-size documents
+- Best when you can't control page size
+
+### 3. Dimensions Only Mode (Standard Size)
+- Only checks page dimensions
+- Splits page into top/bottom
+- No markers needed
+- Ideal for template-based notes
+
+### 4. Process All Pages Mode (Most Flexible)
+- Processes every page
+- Splits each page in half
+- No formatting requirements
+- Quick conversion for simple notes
+
+// INSERT IMAGE - Side-by-side comparison showing example pages that work with each mode
+
 ## Deck Organization
 
-PDFs are organized into Anki decks following your folder structure:
+Your PDFs are organized into Anki decks following your folder structure:
+
 PDFs/
 └── Biology/
 ├── Chapter1.pdf
 └── Chapter2.pdf
 └── Chemistry/
 └── Notes.pdf
+
 Results in:
+- Biology::Chapter1
+- Biology::Chapter2
+- Chemistry::Notes
 
-Biology::Chapter1
-Biology::Chapter2
-Chemistry::Notes
-
-## Common Issues
-
-### Connection Issues
-- Error: "Could not connect to Anki"
-    1. Ensure Anki is running
-    2. Check if AnkiConnect is installed
-    3. Restart Anki and try again
-
-### Processing Issues
-- No flashcards created?
-    1. Verify PDF formatting
-    2. Check chosen processing mode
-    3. Review processing report
-
-### Permission Issues
-- Access Denied Errors?
-    1. Run as administrator (Windows)
-    2. Check folder permissions
-    3. Verify write access to output directory
-
-## Frequently Asked Questions
-
-### Can I modify cards after they're created?
-Yes, you can edit any flashcard directly in Anki after creation.
-
-### Will my cards sync to AnkiWeb?
-Yes, cards will sync normally through Anki's built-in synchronization.
-
-### Does it work with handwritten notes?
-Yes, NotesAnkify works with any PDF content, including handwritten notes, typed text, or diagrams.
-
-### What note-taking apps are supported?
-- GoodNotes
-- Notability
-- OneNote (exported as PDF)
-- Any app that can export to PDF
+// INSERT IMAGE - Screenshot showing the folder structure on the left and resulting Anki deck organization on the right
 
 ## Advanced Features
 
-### Output Directory
-- Save processed flashcard images
-- Review conversion results
-- Debug processing issues
+### Duplicate Detection & Smart Updating
 
-### Duplicate Detection
-- Automatic hash generation
-- Checks existing cards
-- Prevents duplicates
+NotesAnkify uses a technique called "hashing" to manage flashcards intelligently. Think of a hash as a unique fingerprint for each flashcard - even a tiny change will create a different fingerprint.
+
+// INSERT IMAGE - Visual showing how changing content creates different hashes. Example: Two similar flashcards with one small difference, showing different hash values
+
+#### How it Works
+1. When a flashcard is processed, NotesAnkify looks at every pixel in the image
+2. It combines all the color values into a unique string of characters (the hash)
+3. This hash is stored with the flashcard in Anki
+4. When processing PDFs again:
+    - Same content = Same hash = Skip (prevent duplicate)
+    - Changed content = New hash = Update card
+
+#### Benefits
+- You can keep flashcards in multiple PDFs without duplicates
+- Modified flashcards are automatically updated
+- Original cards are preserved if content hasn't changed
+- You don't need to track which cards you've already converted
+
+// INSERT IMAGE - Flowchart showing how the same card in multiple PDFs only creates one Anki card
+
+#### Example
+Imagine you have the same flashcard in two places:
+1. Your chapter notes
+2. Your exam review guide
+
+NotesAnkify will:
+- Recognize they're the same card
+- Only create it once in Anki
+- Update it if you make changes in either place
+
+### Output Directory
+Save processed flashcard images to:
+- Review conversion results
+- Debug any issues
+- Keep a backup of generated cards
 
 ### Processing Report
+After conversion, you'll see:
 - Total PDFs processed
-- Flashcards created
+- Number of flashcards created
 - Processing time
 - Log file location
 
+## Troubleshooting
+
+### Common Issues
+
+#### Cannot Connect to Anki
+1. Ensure Anki is running
+2. Verify AnkiConnect is installed
+3. Restart Anki and try again
+
+#### No Flashcards Created
+1. Check PDF formatting 
+2. Verify chosen processing mode 
+3. Review processing report
+
+#### Access Denied Errors
+1. Run as administrator (Windows)
+2. Check folder permissions 
+3. Verify write access to output directory
+
+### Finding Log Files
+
+Logs are saved in:
+- Windows: `%USERPROFILE%\notesankify-logs\`
+- macOS: `~/notesankify-logs/`
+- Linux: `~/notesankify-logs/`
+
+Include these logs when reporting issues.
+
+## FAQ
+
+**Q: Does it work with handwritten notes?**  
+A: Yes! NotesAnkify works with any PDF content, including handwritten notes, typed text, or diagrams.
+
+**Q: Will my existing Anki flashcards be affected?**  
+A: No. NotesAnkify safely adds new flashcards without modifying existing ones.
+
+**Q: What note-taking apps are supported?**  
+A: Any app that can export to PDF works, including:
+- GoodNotes
+- Notability
+- OneNote
+- Nebo
+- Any PDF-capable app
+
 ## Need Help?
 
-- [Create an Issue](https://github.com/kpauljoseph/notesankify/issues)
+- [Read the Documentation](https://notesankify.com/docs)
+- [Report an Issue](https://github.com/kpauljoseph/notesankify/issues)
 - [Join Discussions](https://github.com/kpauljoseph/notesankify/discussions)
-- Check the [Wiki](https://github.com/kpauljoseph/notesankify/wiki)
+- [Check the Wiki](https://github.com/kpauljoseph/notesankify/wiki)
