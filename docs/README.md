@@ -1,5 +1,8 @@
 # NotesAnkify Documentation
 
+![NotesAnkify Test](images/img.png)
+
+
 Convert your PDF notes to Anki flashcards automatically. This tool monitors a directory for PDFs containing flashcards, processes them based on specified page dimensions, and creates/updates Anki decks while maintaining learning progress.
 
 ## Quick Start Guide
