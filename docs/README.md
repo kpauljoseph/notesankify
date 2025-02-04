@@ -1,10 +1,12 @@
-<img src="images/NotesAnkify-icon-256.png" alt="NotesAnkify logo" title="NotesAnkify" align="left" height="60px"/>
+<div align="left">
+  <img src="images/NotesAnkify-icon-256.png" alt="NotesAnkify" width="128" height="128">
+</div>
 
 # NotesAnkify
 
 Turn your PDF notes into Anki flashcards automatically. Study smarter with spaced repetition!
 
-// INSERT IMAGE - A side-by-side comparison showing a PDF note on the left with question/answer sections and the resulting Anki flashcard on the right
+// INSERT IMAGE - A side-by-side comparison showing a PDF note on the left with question/answer sections and the resulting Anki flashcard on the right.
 
 ## Table of Contents
 - [Why NotesAnkify?](#why-notesankify)
