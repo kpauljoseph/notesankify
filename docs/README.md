@@ -6,7 +6,7 @@
 
 Turn your PDF notes into Anki flashcards automatically. Study smarter with spaced repetition!
 
-// INSERT IMAGE - A side-by-side comparison showing a PDF note on the left with question/answer sections and the resulting Anki flashcard on the right.
+![PDFNotesToAnki](./images/pdf-note-anki-flashcard.png)
 
 ## Table of Contents
 - [Why NotesAnkify?](#why-notesankify)
