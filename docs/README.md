@@ -6,6 +6,8 @@
 
 Turn your PDF notes into Anki flashcards automatically. Study smarter with spaced repetition!
 
+![NotesAnkifyAppImage](./images/notesankify-app.png)
+
 ![PDFNotesToAnki](./images/pdf-note-anki-flashcard.png)
 
 ## Table of Contents
