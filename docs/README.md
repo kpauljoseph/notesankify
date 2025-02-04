@@ -1,5 +1,5 @@
 <div align="left">
-  <img src="images/NotesAnkify-icon-256.png" alt="NotesAnkify" width="128" height="128">
+  <img src="docs/images/NotesAnkify-icon-256.png" alt="NotesAnkify" width="128" height="128">
 </div>
 
 ## NotesAnkify Documentation
