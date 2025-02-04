@@ -2,7 +2,7 @@
   <img src="images/NotesAnkify-icon-256.png" alt="NotesAnkify" width="128" height="128">
 </div>
 
-# NotesAnkify
+## NotesAnkify Documentation
 
 Turn your PDF notes into Anki flashcards automatically. Study smarter with spaced repetition!
 
