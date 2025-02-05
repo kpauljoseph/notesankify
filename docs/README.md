@@ -39,13 +39,22 @@ Turn your PDF notes into Anki flashcards automatically. Study smarter with space
 
 ## Why NotesAnkify?
 
-Taking notes and creating flashcards are essential for effective studying, but maintaining them separately is time-consuming. NotesAnkify bridges this gap by:
+Taking notes and creating flashcards are essential for effective studying, but maintaining them separately is time-consuming. 
+NotesAnkify bridges this gap by:
 
-- Converting your PDF notes directly into Anki flashcards
+- Converting your PDF note pages directly into Anki flashcards
 - Preserving your existing note-taking workflow
 - Supporting multiple note formats and apps
 - Preventing duplicate flashcards automatically
-- Working with both handwritten and typed notes
+
+## My Setup
+
+- GoodNotes for notes. Although, NotesAnkify will work with any app as long as the notes are available as pdf files.
+- Add flashcards with the in-built flashcard template along with regular note pages.
+- Automatic Backup to OneDrive. (GoodNotes and PDF)
+- Download backup folder with all notes and pdf files.
+- Run NotesAnkify on this downloaded folder to extract all flashcards and send it to Anki.
+- Duplicates will only be processed once!
 
 ## Quick Start
 
@@ -54,11 +63,23 @@ Taking notes and creating flashcards are essential for effective studying, but m
     - Install [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
     - Download NotesAnkify for your platform (See [Installation Guide](#installation))
 
-2. **Format Your Notes**
-   Choose any of these methods:
-    - Add QUESTION/ANSWER markers
-    - Use standard dimensions (455.04 × 587.52 points)
-    - Split pages into top (question) and bottom (answer)
+2. **Format Your Notes**  
+NotesAnkify will work as long as the notes are PDF Files.  
+Based on how the flashcards are made, we can choose any of these processing methods:
+
+- Pages with QUESTION/ANSWER markers AND matching dimensions:  
+This mode will scan through all PDF files for pages that have markers as shown below, 
+and also matching the given dimensions (default 455.04 × 587.52). The top half will be set as question card and the bottom
+half will become answer card in Anki deck.
+         ![FlashcardTemplate](./images/flashcard-template.png)
+- Only pages with QUESTION/ANSWER markers:  
+This mode will scan all files and extract pages of any 
+dimension as long as it has the term "QUESTION" on the top and "ANSWER" at the bottom.
+- Only Pages Matching Dimensions:  
+This mode will work on any page as long as the dimensions match the input.
+The page will be cut in half, top -> Question card, bottom -> Answer card
+- Process All Pages:  
+Split every PDF page into two halves, top -> Question card, bottom -> Answer card.
 
 3. **Convert to Flashcards**
     - Start Anki
