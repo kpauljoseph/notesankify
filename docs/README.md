@@ -85,6 +85,7 @@ Split every PDF page into two halves, top -> Question card, bottom -> Answer car
     - Start Anki
     - Launch NotesAnkify
     - Select PDF directory
+    - Specify Root Deck Name (All flashcards will go under this deck name in Anki)
     - Choose processing mode
     - Click "Process and Send to Anki"
 

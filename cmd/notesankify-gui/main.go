@@ -137,6 +137,7 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	// Root deck name
 	gui.rootDeckEntry = widget.NewEntry()
 	gui.rootDeckEntry.SetPlaceHolder("Root Deck Name (Optional)")
+	gui.rootDeckEntry.SetText("NotesAnkify")
 
 	// Processing mode selection
 	gui.modeSelect = widget.NewSelect(
@@ -526,7 +527,12 @@ func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
 }
 
 func setupLogging() (*logger.Logger, string, error) {
-	logsDir := "notesankify-logs"
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	logsDir := filepath.Join(homeDir, "notesankify-logs")
 	if err := os.MkdirAll(logsDir, 0755); err != nil {
 		return nil, "", fmt.Errorf("failed to create logs directory: %w", err)
 	}
