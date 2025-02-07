@@ -658,11 +658,20 @@ func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
 			fyne.CurrentApp().OpenURL(u)
 		}
 	})
-	supportButton.Importance = widget.HighImportance
+	supportButton.Importance = widget.MediumImportance
 
-	detailsAndSupportContainer := container.NewBorder(nil, supportButton, nil, nil, textContainer)
+	docsButton := widget.NewButton("Read the Docs!", func() {
+		if u, err := url.Parse("https://notesankify.com/docs"); err == nil {
+			fyne.CurrentApp().OpenURL(u)
+		}
+	})
+	docsButton.Importance = widget.MediumImportance
 
-	header := container.NewBorder(nil, detailsAndSupportContainer, nil, nil, appIcon)
+	docsAndSupportContainer := container.NewBorder(nil, docsButton, nil, nil, supportButton)
+
+	detailsContainer := container.NewBorder(nil, docsAndSupportContainer, nil, nil, textContainer)
+
+	header := container.NewBorder(nil, detailsContainer, nil, nil, appIcon)
 
 	return container.NewCenter(
 		container.NewPadded(header),
