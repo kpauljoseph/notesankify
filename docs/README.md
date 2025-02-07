@@ -52,6 +52,7 @@ NotesAnkify bridges this gap by:
 - GoodNotes for notes. Although, NotesAnkify will work with any app as long as the notes(with flashcards) are available as pdf files.
 - Add flashcards with the in-built flashcard template(Goodnotes Standard Size Flashcard) along with regular note pages.
 - Automatic Backup to OneDrive. (GoodNotes and PDF)
+  ![backupSettings](./images/Backup-settings.png)
 - Download backup folder with all notes and pdf files.
 - Run NotesAnkify on this downloaded folder to extract all flashcards and send it to Anki.
 - Duplicates will only be processed once!
