@@ -49,8 +49,8 @@ NotesAnkify bridges this gap by:
 
 ## My Setup
 
-- GoodNotes for notes. Although, NotesAnkify will work with any app as long as the notes are available as pdf files.
-- Add flashcards with the in-built flashcard template along with regular note pages.
+- GoodNotes for notes. Although, NotesAnkify will work with any app as long as the notes(with flashcards) are available as pdf files.
+- Add flashcards with the in-built flashcard template(Goodnotes Standard Size Flashcard) along with regular note pages.
 - Automatic Backup to OneDrive. (GoodNotes and PDF)
 - Download backup folder with all notes and pdf files.
 - Run NotesAnkify on this downloaded folder to extract all flashcards and send it to Anki.
@@ -89,24 +89,56 @@ Split every PDF page into two halves, top -> Question card, bottom -> Answer car
     - Choose processing mode
     - Click "Process and Send to Anki"
 
-// INSERT IMAGE - Screenshot of NotesAnkify's main interface with key areas highlighted and numbered according to the steps above
-
 ## Installation
 
 ### Windows
+
+We haven't setup a developer account with Windows yet, so the app might trigger an alert saying it's unverified and dangerous.
+If you're not comfortable downloading this, you could also checkout the Github page and build the app yourself locally or download the app from Github packages.
+  
+Steps:  
+
 1. Download the ZIP file for your system (AMD64/ARM64)
 2. Extract the ZIP file to your desired location
-3. Run NotesAnkify.exe
+3. When you try to run an unverified app, Windows SmartScreen will show a warning message to protect you from potentially harmful software.  
+   Here are the exact steps to proceed with installation:  
+   When you first try to run the unverified app's installer or executable, you'll likely see a blue window with the message "Windows protected your PC" and "Windows SmartScreen prevented an unrecognized app from starting. Running this app might put your PC at risk."
+   To proceed:
+   - Click on "More info" in this blue warning window 
+   - After clicking "More info," a new button will appear that says "Run anyway"
+   - Click "Run anyway" to proceed with the installation 
+   - If you encounter a User Account Control (UAC) prompt next (a window asking "Do you want to allow this app to make changes to your device?"):
+   - Verify that the publisher name matches what you expect 
+   - Click "Yes" to continue the installation 
+   - Note: It's important to understand that Windows shows these warnings because unverified apps haven't been signed with a certificate from a trusted developer. Only proceed with installation if you trust the source of the app and have downloaded it from the developer's official website. Think of it like checking ID at a security checkpoint – Windows is simply asking you to vouch for the app's trustworthiness.
+4. Run NotesAnkify.exe
 
-// INSERT IMAGE - Screenshot showing Windows security warning with "More info" and "Run anyway" buttons highlighted
 
-### macOS
+### macOS  
+
+We haven't setup a developer account with Apple yet, so the app might trigger an alert saying it's unverified and dangerous.
+If you're not comfortable downloading this, you could also checkout the Github page and build the app yourself locally or download the app from Github packages.
+  
+Steps to Download:  
+
 1. Download the DMG file
 2. Open the DMG file
-3. Drag NotesAnkify to your Applications folder 
-4. Right-click and select "Open" on first launch
+3. Drag NotesAnkify to your Applications folder
+4. First, try to open the app normally by double-clicking it. You'll see a message saying the app 
+   "cannot be opened because it is from an unidentified developer." At this point, clicking "Cancel" will just close the message.
+   ![MacOSUnverfiedDeveloperAlert](./images/macos-unverfied-developer-alert.png)
 
-// INSERT IMAGE - Screenshot showing macOS Gatekeeper dialog with right-click menu open
+   Instead, right-click (or Control+click) on the app in Finder and select "Open" from the menu.
+   This time, you'll see a similar warning message, but it will include an "Open" button. 
+   When you open the app this way, macOS remembers your choice and won't show the warning again for this specific app.
+   If you don't see the "Open" option, you can also adjust your security settings:  
+   Open System Settings (or System Preferences in older versions),  
+   Go to "Privacy & Security",  
+   Look for the message about the blocked app under "Security",  
+   Click "Open Anyway"  
+   ![MacOSUnverfiedDeveloperCtrlClickOpen](./images/macos-ctrl-click-open.png)
+
+Note: It's worth understanding that Apple includes these safeguards because unverified apps could potentially contain malware or other security risks. Before installing any unverified app, make sure you trust its source and have downloaded it from the developer's official website.
 
 ### Linux
 1. Download the tar.xz file 
@@ -181,19 +213,13 @@ NotesAnkify offers four ways to process your notes:
 
 Your PDFs are organized into Anki decks following your folder structure:
 
-PDFs/
-└── Biology/
-├── Chapter1.pdf
-└── Chapter2.pdf
-└── Chemistry/
-└── Notes.pdf
+PDF Source Directory: `PDF_Files`
+![PDFSource](./images/pdf-files-directory-structure.png)
 
-Results in:
-- Biology::Chapter1
-- Biology::Chapter2
-- Chemistry::Notes
+Root Deck: `NotesAnkify`
 
-// INSERT IMAGE - Screenshot showing the folder structure on the left and resulting Anki deck organization on the right
+Resulting Anki Deck Structure: 
+![AnkiDeckStructure](./images/notesankify-anki-deck-structure.png)
 
 ## Advanced Features
 
@@ -209,7 +235,7 @@ NotesAnkify uses a technique called "hashing" to manage flashcards intelligently
 3. This hash is stored with the flashcard in Anki
 4. When processing PDFs again:
     - Same content = Same hash = Skip (prevent duplicate)
-    - Changed content = New hash = Update card
+    - Changed content = New hash = Add card
 
 #### Benefits
 - You can keep flashcards in multiple PDFs without duplicates
@@ -227,7 +253,6 @@ Imagine you have the same flashcard in two places:
 NotesAnkify will:
 - Recognize they're the same card
 - Only create it once in Anki
-- Update it if you make changes in either place
 
 ### Output Directory
 Save processed flashcard images to:
