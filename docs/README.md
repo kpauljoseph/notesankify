@@ -152,14 +152,8 @@ You can create flashcards in three ways:
 ### 1. Using Question/Answer Markers
 
 Add "QUESTION" and "ANSWER" text to your notes:
+![QuestionAnswerMarkers](./images/flashcard-question-answer-marker-highlight.png)
 
-QUESTION
-What is photosynthesis?
-
-ANSWER
-Process where plants convert...
-
-// INSERT IMAGE - Example of a note page with QUESTION/ANSWER markers highlighted
 
 ### 2. Using Standard Dimensions
 
