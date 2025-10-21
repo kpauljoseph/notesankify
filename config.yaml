@@ -10,3 +10,16 @@ database:
   password: "postgres"
   dbname: "notesankify"
   sslmode: "disable"
+
+# OneDrive sync configuration
+onedrive:
+  enabled: false
+  # Your Azure AD application client ID
+  # Create one at: https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+  client_id: ""
+  # Tenant ID (use "common" for personal Microsoft accounts)
+  tenant_id: "common"
+  # OneDrive folder path to sync (e.g., "Documents/Notes" or "" for root)
+  folder_path: ""
+  # Auto-sync interval in minutes (0 = manual sync only)
+  sync_interval: 0

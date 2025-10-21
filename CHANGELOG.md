@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- OneDrive sync capability for automatic PDF download from Microsoft OneDrive
+- OAuth2 device code authentication for OneDrive
+- New CLI flags: `--sync-onedrive`, `--onedrive-auth`, `--onedrive-clear-auth`
+- OneDrive configuration section in config.yaml
+- Comprehensive OneDrive setup documentation (docs/ONEDRIVE_SETUP.md)
+- Smart sync with file skip detection (avoids re-downloading unchanged files)
+- Recursive PDF discovery in OneDrive folders
+- Sync statistics and error reporting
+- Microsoft Graph SDK integration for OneDrive API access
+
+### Changed
+- Updated config package to support OneDrive settings
+- Enhanced CLI to support OneDrive sync workflow
+- Updated main documentation with OneDrive sync information
+
 ## [1.0.0] - 2025-02-07
 
 ### Added

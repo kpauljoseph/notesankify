@@ -53,8 +53,8 @@ NotesAnkify bridges this gap by:
 - Add flashcards with the in-built flashcard template(Goodnotes Standard Size Flashcard) along with regular note pages.
 - Automatic Backup to OneDrive. (GoodNotes and PDF)
   ![backupSettings](./images/Backup-settings.png)
-- Download backup folder with all notes and pdf files.
-- Run NotesAnkify on this downloaded folder to extract all flashcards and send it to Anki.
+- **NEW**: Automatic OneDrive sync! NotesAnkify can now automatically download PDFs from OneDrive. See [OneDrive Setup Guide](ONEDRIVE_SETUP.md).
+- Run NotesAnkify to extract all flashcards and send it to Anki.
 - Duplicates will only be processed once!
 
 ## Quick Start
@@ -217,6 +217,21 @@ Resulting Anki Deck Structure:
 ![AnkiDeckStructure](./images/notesankify-anki-deck-structure.png)
 
 ## Advanced Features
+
+### OneDrive Sync
+
+NotesAnkify now supports automatic synchronization of PDFs from OneDrive! This feature allows you to:
+- Automatically download PDFs from your OneDrive folder
+- Keep your local notes in sync with cloud storage
+- Process notes directly from cloud without manual downloads
+
+**Quick Start:**
+1. Set up Azure AD app registration ([detailed guide](ONEDRIVE_SETUP.md))
+2. Configure OneDrive settings in `config.yaml`
+3. Authenticate once: `notesankify --onedrive-auth`
+4. Sync and process: `notesankify --sync-onedrive --pdf-dir ./notes`
+
+For complete setup instructions, see the [OneDrive Setup Guide](ONEDRIVE_SETUP.md).
 
 ### Duplicate Detection & Smart Updating
 

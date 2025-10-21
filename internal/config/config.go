@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/kpauljoseph/notesankify/internal/onedrive"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -21,6 +22,7 @@ type Config struct {
 		DBName   string `yaml:"dbname"`
 		SSLMode  string `yaml:"sslmode"`
 	} `yaml:"database"`
+	OneDrive onedrive.Config `yaml:"onedrive"`
 }
 
 func Load(path string) (*Config, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/kpauljoseph/notesankify/internal/anki"
 	"github.com/kpauljoseph/notesankify/internal/config"
+	"github.com/kpauljoseph/notesankify/internal/onedrive"
 	"github.com/kpauljoseph/notesankify/internal/pdf"
 	"github.com/kpauljoseph/notesankify/internal/scanner"
 	"github.com/kpauljoseph/notesankify/pkg/logger"
@@ -29,6 +30,9 @@ func main() {
 	disableMarkerCheck := flag.Bool("no-markers", false, "disable checking for QUESTION/ANSWER markers in pages")
 	disableDimensionCheck := flag.Bool("no-dimensions", false, "disable checking page dimensions")
 	versionFlag := flag.Bool("version", false, "Print version information")
+	syncOneDrive := flag.Bool("sync-onedrive", false, "sync PDFs from OneDrive before processing")
+	onedriveAuth := flag.Bool("onedrive-auth", false, "authenticate with OneDrive (run once to setup)")
+	onedriveClearAuth := flag.Bool("onedrive-clear-auth", false, "clear OneDrive authentication")
 
 	flag.Parse()
 
@@ -70,6 +74,24 @@ func main() {
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		log.Fatal("Error loading config: %v", err)
+	}
+
+	// Handle OneDrive authentication commands
+	if *onedriveAuth {
+		handleOneDriveAuth(cfg, log)
+		return
+	}
+
+	if *onedriveClearAuth {
+		handleOneDriveClearAuth(cfg, log)
+		return
+	}
+
+	// Handle OneDrive sync if requested
+	if *syncOneDrive && cfg.OneDrive.Enabled {
+		if err := handleOneDriveSync(context.Background(), cfg, log); err != nil {
+			log.Fatal("OneDrive sync failed: %v", err)
+		}
 	}
 
 	if *pdfDir != "" {
@@ -175,4 +197,74 @@ func main() {
 
 	report.EndTime = time.Now()
 	report.Print(log)
+}
+
+// handleOneDriveAuth handles the OneDrive authentication flow
+func handleOneDriveAuth(cfg *config.Config, log *logger.Logger) {
+	if !cfg.OneDrive.Enabled {
+		log.Info("OneDrive sync is not enabled in config.yaml")
+		log.Info("Set onedrive.enabled to true and configure your client_id")
+		return
+	}
+
+	syncService, err := onedrive.NewSyncService(&cfg.OneDrive, log)
+	if err != nil {
+		log.Fatal("Failed to create OneDrive sync service: %v", err)
+	}
+
+	log.Info("Starting OneDrive authentication...")
+	if err := syncService.Authenticate(context.Background()); err != nil {
+		log.Fatal("Authentication failed: %v", err)
+	}
+
+	log.Info("Authentication successful! You can now use --sync-onedrive flag")
+}
+
+// handleOneDriveClearAuth clears stored OneDrive authentication
+func handleOneDriveClearAuth(cfg *config.Config, log *logger.Logger) {
+	if !cfg.OneDrive.Enabled {
+		log.Info("OneDrive sync is not enabled")
+		return
+	}
+
+	syncService, err := onedrive.NewSyncService(&cfg.OneDrive, log)
+	if err != nil {
+		log.Fatal("Failed to create OneDrive sync service: %v", err)
+	}
+
+	if err := syncService.ClearAuth(); err != nil {
+		log.Fatal("Failed to clear authentication: %v", err)
+	}
+
+	log.Info("OneDrive authentication cleared successfully")
+}
+
+// handleOneDriveSync syncs PDFs from OneDrive
+func handleOneDriveSync(ctx context.Context, cfg *config.Config, log *logger.Logger) error {
+	syncService, err := onedrive.NewSyncService(&cfg.OneDrive, log)
+	if err != nil {
+		return fmt.Errorf("failed to create OneDrive sync service: %w", err)
+	}
+
+	// Check if authenticated
+	if !syncService.IsAuthenticated() {
+		log.Info("Not authenticated with OneDrive")
+		log.Info("Run with --onedrive-auth flag first to authenticate")
+		return fmt.Errorf("not authenticated")
+	}
+
+	// Perform sync
+	stats, err := syncService.Sync(ctx, cfg.PDFSourceDir)
+	if err != nil {
+		return err
+	}
+
+	if len(stats.Errors) > 0 {
+		log.Info("\nSync completed with errors:")
+		for _, err := range stats.Errors {
+			log.Info("  - %v", err)
+		}
+	}
+
+	return nil
 }
