@@ -1,4 +1,4 @@
-.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app generate-version darwin-dmg
+.PHONY: build test clean lint check test-int test-all run deps package-all darwin-app windows-app linux-app generate-version darwin-dmg install
 
 VERSION := $(shell git describe --tags --always --dirty)
 COMMIT  := $(shell git rev-parse --short HEAD)
@@ -51,11 +51,18 @@ install-tools:
 	@echo "Installing fyne-cross..."
 	go install github.com/fyne-io/fyne-cross@latest
 
-build: generate-version icons bundle-assets
+build: generate-version
 	mkdir -p $(BUILD_DIR)
 	$(GOBUILD) -o $(BUILD_DIR)/$(CLI_BINARY_NAME) cmd/notesankify/main.go
-	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/gui/main.go
+	$(GOBUILD) -o $(BUILD_DIR)/$(GUI_BINARY_NAME) cmd/notesankify-gui/main.go
 
+install: build
+	@echo "Installing binaries to $(HOME)/.local/bin..."
+	mkdir -p $(HOME)/.local/bin
+	cp $(BUILD_DIR)/$(CLI_BINARY_NAME) $(HOME)/.local/bin/
+	cp $(BUILD_DIR)/$(GUI_BINARY_NAME) $(HOME)/.local/bin/
+	@echo "Installation complete!"
+	@echo "Make sure $(HOME)/.local/bin is in your PATH"
 
 darwin-app: generate-version
 	@echo "Building MacOS app..."
@@ -137,7 +144,7 @@ run:
 	go run cmd/notesankify/main.go
 
 run-gui:
-	go run cmd/gui/main.go
+	go run cmd/notesankify-gui/main.go
 
 deps:
 	go mod download
