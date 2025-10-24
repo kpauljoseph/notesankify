@@ -114,7 +114,7 @@ linux-app: generate-version
 		$(GUI_SRC_DIR)
 	mv $(DIST_DIR)/linux-amd64/$(APP_NAME).tar.xz $(DIST_DIR)/linux-amd64/$(APP_NAME)-linux-amd64-$(VERSION).tar.xz
 
-package-all: clean bundle-assets generate-version darwin-dmg windows-app linux-app
+package-all: clean generate-version darwin-dmg windows-app linux-app
 
 bundle-assets:
 	mkdir -p $(ASSETS_BUNDLE_DIR)
