@@ -10,9 +10,11 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/assets/bundle"
+	"github.com/kpauljoseph/notesankify/internal/filerepo"
 	"github.com/kpauljoseph/notesankify/pkg/updater"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"github.com/kpauljoseph/notesankify/pkg/version"
@@ -78,6 +80,10 @@ func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 	}
 
 	notesankifyApp := app.New()
+	// Must run after app.New, which registers Fyne's default file repository.
+	if err := filerepo.Register(); err != nil {
+		log.Info("Folder dialog will read directories to check them: %v", err)
+	}
 	window := notesankifyApp.NewWindow("NotesAnkify")
 	if bundledIcon := bundle.ResourceIcon256Png; err == nil {
 		notesankifyApp.SetIcon(bundledIcon)
@@ -174,16 +180,7 @@ func (gui *NotesAnkifyGUI) setupUI() {
 	gui.outputDirEntry.SetText(utils.GetDefaultOutputDir())
 	gui.outputDirEntry.SetPlaceHolder("Output Directory (Optional - defaults to temporary directory)")
 	browseOutputDirBtn := widget.NewButton("Browse", func() {
-		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-			if err != nil {
-				dialog.ShowError(err, gui.window)
-				return
-			}
-			if uri == nil {
-				return
-			}
-			gui.outputDirEntry.SetText(uri.Path())
-		}, gui.window)
+		gui.showFolderPicker(gui.outputDirEntry.Text, gui.outputDirEntry.SetText)
 	})
 	outputDirContainer := container.NewBorder(
 		nil, nil, nil, browseOutputDirBtn,
@@ -340,7 +337,16 @@ func (gui *NotesAnkifyGUI) createInfoSection(title, tooltip string, content fyne
 }
 
 func (gui *NotesAnkifyGUI) handleBrowse() {
-	dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+	gui.showFolderPicker(gui.dirEntry.Text, gui.dirEntry.SetText)
+}
+
+// showFolderPicker opens the folder dialog starting in a directory the app
+// controls instead of the user's home directory. Together with the quiet file
+// repository installed at startup, this keeps macOS from showing a chain of
+// folder privacy prompts before the dialog appears (issue #29). A prompt is
+// only shown when the user actually enters a protected folder.
+func (gui *NotesAnkifyGUI) showFolderPicker(current string, onChosen func(path string)) {
+	picker := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 		if err != nil {
 			dialog.ShowError(err, gui.window)
 			return
@@ -348,8 +354,18 @@ func (gui *NotesAnkifyGUI) handleBrowse() {
 		if uri == nil {
 			return
 		}
-		gui.dirEntry.SetText(uri.Path())
+		onChosen(uri.Path())
 	}, gui.window)
+
+	start, err := utils.BrowseStartDir(current)
+	if err != nil {
+		gui.log.Debug("Could not prepare folder picker start directory: %v", err)
+	} else if lister, err := storage.ListerForURI(storage.NewFileURI(start)); err != nil {
+		gui.log.Debug("Could not open folder picker start directory %s: %v", start, err)
+	} else {
+		picker.SetLocation(lister)
+	}
+	picker.Show()
 }
 
 func (gui *NotesAnkifyGUI) handleProcess() {
@@ -415,22 +431,23 @@ func (gui *NotesAnkifyGUI) handleProcess() {
 	gui.progress.Show()
 	gui.updateStatus("Processing files...")
 
-	go gui.processFiles()
+	go gui.processFiles(gui.dirEntry.Text, gui.rootDeckEntry.Text)
 }
 
+// showError and updateStatus are called from the processing goroutine, so the
+// widget updates are handed to the UI goroutine with fyne.Do.
 func (gui *NotesAnkifyGUI) showError(message string) {
-	gui.mutex.Lock()
-	defer gui.mutex.Unlock()
-
-	notification := fyne.NewNotification("Error", message)
-	fyne.CurrentApp().SendNotification(notification)
-	gui.status.SetText("Error occurred during processing")
+	fyne.Do(func() {
+		notification := fyne.NewNotification("Error", message)
+		fyne.CurrentApp().SendNotification(notification)
+		gui.status.SetText("Error occurred during processing")
+	})
 }
 
 func (gui *NotesAnkifyGUI) updateStatus(message string) {
-	gui.mutex.Lock()
-	defer gui.mutex.Unlock()
-	gui.status.SetText(message)
+	fyne.Do(func() {
+		gui.status.SetText(message)
+	})
 }
 
 func (gui *NotesAnkifyGUI) showCompletionDialog(report *anki.ProcessingReport) {
@@ -576,18 +593,16 @@ func (gui *NotesAnkifyGUI) handleModeChange(selected string) {
 	}
 }
 
-func (gui *NotesAnkifyGUI) processFiles() {
-	defer func() {
-		gui.mutex.Lock()
+func (gui *NotesAnkifyGUI) processFiles(sourceDir, rootDeck string) {
+	defer fyne.Do(func() {
 		gui.progress.Hide()
-		gui.mutex.Unlock()
-	}()
+	})
 
 	report := &anki.ProcessingReport{
 		StartTime: time.Now(),
 	}
 
-	pdfs, err := gui.scanner.FindPDFs(context.Background(), gui.dirEntry.Text)
+	pdfs, err := gui.scanner.FindPDFs(context.Background(), sourceDir)
 	if err != nil {
 		gui.showError(fmt.Sprintf("Error finding PDFs: %v", err))
 		return
@@ -606,7 +621,7 @@ func (gui *NotesAnkifyGUI) processFiles() {
 		}
 
 		if stats.FlashcardCount > 0 {
-			deckName := anki.GetDeckNameFromPath(gui.rootDeckEntry.Text, pdf.RelativePath)
+			deckName := anki.GetDeckNameFromPath(rootDeck, pdf.RelativePath)
 			report.TotalFlashcards += stats.FlashcardCount
 
 			if err := gui.ankiService.CreateDeck(deckName); err != nil {
@@ -622,7 +637,9 @@ func (gui *NotesAnkifyGUI) processFiles() {
 	}
 
 	report.EndTime = time.Now()
-	gui.showCompletionDialog(report)
+	fyne.Do(func() {
+		gui.showCompletionDialog(report)
+	})
 }
 
 func (gui *NotesAnkifyGUI) createHeader() fyne.CanvasObject {
@@ -703,7 +720,9 @@ func (gui *NotesAnkifyGUI) checkForUpdates() {
 	}
 
 	if info != nil && info.IsAvailable {
-		gui.showUpdateDialog(info)
+		fyne.Do(func() {
+			gui.showUpdateDialog(info)
+		})
 	}
 }
 
