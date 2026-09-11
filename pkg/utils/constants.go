@@ -11,4 +11,8 @@ const (
 
 	QuestionKeyword = "QUESTION"
 	AnswerKeyword   = "ANSWER"
+
+	// DefaultBrowseDirName is the folder created in the user's home directory
+	// that the folder picker opens in when nothing has been chosen yet.
+	DefaultBrowseDirName = "NotesAnkify"
 )

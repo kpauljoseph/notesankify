@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Upgrade Fyne from 2.5.3 to 2.8.1.
+
+### Fixed
+- macOS: clicking Browse no longer triggers a chain of privacy prompts for
+  Desktop, Documents, Downloads, Photos, Music and network volumes. The folder
+  picker now opens in the last chosen folder, or in `~/NotesAnkify`, instead of
+  scanning the home directory. (#29)
+
 ## [1.0.0] - 2025-02-07
 
 ### Added
