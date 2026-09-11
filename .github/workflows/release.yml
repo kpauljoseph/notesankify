@@ -12,10 +12,12 @@ permissions:
 
 # Steps to use this workflow:
 # 1. Push a tag: git tag v0.1.0 && git push origin v0.1.0
-# 2. This workflow will create the release and update metadata
+# 2. This workflow creates a draft release with notes from CHANGELOG.md
 # 3. Build packages locally using: make package-all
 # 4. Upload built packages using the upload-release.sh script
 # 5. Review and publish the release on GitHub.
+# 6. Publishing triggers publish-version.yml, which updates version.json on
+#    notesankify.com. The app's update check only ever sees published assets.
 
 jobs:
   create-release:
@@ -34,48 +36,6 @@ jobs:
           draft: true
           prerelease: false
           body: "Loading release notes..."
-  update-metadata:
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Generate version.json
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          # Create temporary folder for version.json only
-          mkdir -p temp-version
-          
-          # Generate version.json in temporary folder
-          cat > temp-version/version.json << EOF
-          {
-              "latest_version": "${VERSION}",
-              "min_version": "${VERSION}",
-              "update_message": "New version ${VERSION} is available with improvements and bug fixes!",
-              "force_update": false,
-              "platform_downloads": {
-                  "windows/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-amd64-${VERSION}.zip",
-                  "windows/arm64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-arm64-${VERSION}.zip",
-                  "darwin/all": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-macos-universal-${VERSION}.dmg",
-                  "linux/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-linux-amd64-${VERSION}.tar.xz"
-              }
-          }
-          EOF
-
-      - name: Deploy version.json
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          token: ${{ secrets.ACCESS_TOKEN }}
-          repository-name: kpauljoseph/notesankify.github.io
-          commit-message: "version ${{ github.ref_name }} release from ${{ github.sha }}"
-          branch: main
-          folder: temp-version
-          clean: false
-          target-folder: .
-
   update-release-notes:
     needs: create-release
     runs-on: ubuntu-latest

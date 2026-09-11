@@ -1,0 +1,54 @@
+name: Publish version.json
+
+# Runs only when a release is published. Earlier this ran on the tag push,
+# which advertised the new version to running apps while the release was
+# still a draft with no public assets, so the update dialog's download link
+# returned 404 until the artifacts were uploaded and the release published.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish-version:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Generate version.json
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir -p temp-version
+          cat > temp-version/version.json << EOF
+          {
+              "latest_version": "${VERSION}",
+              "min_version": "${VERSION}",
+              "update_message": "New version ${VERSION} is available with improvements and bug fixes!",
+              "force_update": false,
+              "platform_downloads": {
+                  "windows/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-amd64-${VERSION}.zip",
+                  "windows/arm64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-windows-arm64-${VERSION}.zip",
+                  "darwin/all": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-macos-universal-${VERSION}.dmg",
+                  "linux/amd64": "https://github.com/kpauljoseph/notesankify/releases/download/${VERSION}/NotesAnkify-linux-amd64-${VERSION}.tar.xz"
+              }
+          }
+          EOF
+          cat temp-version/version.json
+
+      - name: Deploy version.json
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository-name: kpauljoseph/notesankify.github.io
+          commit-message: "version ${{ github.event.release.tag_name }} release from ${{ github.sha }}"
+          branch: main
+          folder: temp-version
+          clean: false
+          target-folder: .
