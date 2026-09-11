@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/kpauljoseph/notesankify/assets/bundle"
+	"github.com/kpauljoseph/notesankify/internal/filerepo"
 	"github.com/kpauljoseph/notesankify/pkg/updater"
 	"github.com/kpauljoseph/notesankify/pkg/utils"
 	"github.com/kpauljoseph/notesankify/pkg/version"
@@ -79,6 +80,10 @@ func NewNotesAnkifyGUI() *NotesAnkifyGUI {
 	}
 
 	notesankifyApp := app.New()
+	// Must run after app.New, which registers Fyne's default file repository.
+	if err := filerepo.Register(); err != nil {
+		log.Info("Folder dialog will read directories to check them: %v", err)
+	}
 	window := notesankifyApp.NewWindow("NotesAnkify")
 	if bundledIcon := bundle.ResourceIcon256Png; err == nil {
 		notesankifyApp.SetIcon(bundledIcon)
@@ -336,10 +341,10 @@ func (gui *NotesAnkifyGUI) handleBrowse() {
 }
 
 // showFolderPicker opens the folder dialog starting in a directory the app
-// controls instead of the user's home directory. Fyne's dialog probes every
-// folder it lists, and on macOS listing the home directory triggers a separate
-// privacy prompt for Desktop, Documents, Downloads, Photos, Music and network
-// volumes before the dialog even appears (issue #29).
+// controls instead of the user's home directory. Together with the quiet file
+// repository installed at startup, this keeps macOS from showing a chain of
+// folder privacy prompts before the dialog appears (issue #29). A prompt is
+// only shown when the user actually enters a protected folder.
 func (gui *NotesAnkifyGUI) showFolderPicker(current string, onChosen func(path string)) {
 	picker := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
 		if err != nil {

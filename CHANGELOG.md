@@ -13,8 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - macOS: clicking Browse no longer triggers a chain of privacy prompts for
   Desktop, Documents, Downloads, Photos, Music and network volumes. The folder
-  picker now opens in the last chosen folder, or in `~/NotesAnkify`, instead of
-  scanning the home directory. (#29)
+  picker now checks folders with a stat call instead of reading them, and opens
+  in the last chosen folder, or in `~/NotesAnkify`, instead of the home
+  directory. macOS asks only when a protected folder is actually opened. (#29)
 
 ## [1.0.0] - 2025-02-07
 
