@@ -68,7 +68,7 @@ var _ = Describe("Quiet file repository", func() {
 			Expect(os.Mkdir(locked, 0o755)).To(Succeed())
 			// Execute-only: stat works, but opening or reading the directory fails.
 			Expect(os.Chmod(locked, 0o100)).To(Succeed())
-			DeferCleanup(os.Chmod, locked, 0o755)
+			DeferCleanup(func() { _ = os.Chmod(locked, 0o755) })
 
 			ok, err := listable().CanList(storage.NewFileURI(locked))
 
